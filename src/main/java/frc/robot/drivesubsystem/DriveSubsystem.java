@@ -8,6 +8,7 @@
 package frc.robot.drivesubsystem;
 
 import frc.robot.IdGroup;
+import frc.robot.PS4Constants;
 
 import com.ctre.phoenix.motorcontrol.ControlFrame;
 import com.ctre.phoenix.motorcontrol.FeedbackDevice;
@@ -61,13 +62,11 @@ public class DriveSubsystem extends Subsystem {
 
     private SendableChooser<DriveStyles> driveStyleChooser;
 
-    private boolean telemetryEnabled;
-
     /***
      * Constructor
      */
-    public DriveSubsystem(IdGroup leftIds, 
-                          IdGroup rightIds, 
+    public DriveSubsystem(int[] leftIds, 
+                          int[] rightIds, 
                           FeedbackDevice aFeedbackDevice,
                           int aTimeout_msec) 
     {
@@ -78,20 +77,20 @@ public class DriveSubsystem extends Subsystem {
         driveStyleChooser.addObject( "Modified Arcade", DriveStyles.MODIFIED_ARCADE);
 
         // Configure motors at initialiation
-        leftMotors = new WPI_TalonSRX[leftIds.length()];
-        rightMotors = new WPI_TalonSRX[rightIds.length()];
+        leftMotors = new WPI_TalonSRX[leftIds.length];
+        rightMotors = new WPI_TalonSRX[rightIds.length];
 
         leftCurrent_amp = new double[leftMotors.length];
         rightCurrent_amp = new double[rightMotors.length];
 
         for (int i = 0; i < leftMotors.length; ++i) 
         {
-            leftMotors[i] = new WPI_TalonSRX(leftIds.get(i));
+            leftMotors[i] = new WPI_TalonSRX(leftIds[i]);
             leftMotors[i].setName(getName(),"Left_" + Integer.toString(i));            
         }
         for (int i = 0; i < rightMotors.length; ++i) 
         {
-            rightMotors[i] = new WPI_TalonSRX(rightIds.get(i));
+            rightMotors[i] = new WPI_TalonSRX(rightIds[i]);
             rightMotors[i].setName(getName(),"Right_" + Integer.toString(i));            
         }
 
@@ -103,8 +102,6 @@ public class DriveSubsystem extends Subsystem {
         // NOTE: We don't use the SpeedControllerGroup because the behavior requires
         // additional CAN traffic that is not needed with TalonSRX controllers.
         drive = new DifferentialDrive(leftMotors[0], rightMotors[0]);
-
-        telemetryEnabled = false;
     }
 
     /**
@@ -134,7 +131,7 @@ public class DriveSubsystem extends Subsystem {
             aMotor.configAllowableClosedloopError(slotIdx, 0, CAN_TIMEOUT_MSEC);
         }
 
-        aMotor.configAuxPIDPolarity(false, CAN_TIMEOUT_MSEC);
+        // aMotor.configAuxPIDPolarity(false, CAN_TIMEOUT_MSEC);
 
         aMotor.configOpenloopRamp(0.0, CAN_TIMEOUT_MSEC);
         aMotor.configClosedloopRamp(0.0, CAN_TIMEOUT_MSEC);
@@ -146,36 +143,37 @@ public class DriveSubsystem extends Subsystem {
         aMotor.configPeakCurrentLimit(0, CAN_TIMEOUT_MSEC);
 
         // Assume we have no limit switches associated with this motor
-        aMotor.configForwardLimitSwitchSource(LimitSwitchSource.Deactivated, LimitSwitchNormal.Disabled, CAN_TIMEOUT_MSEC);
-        aMotor.configForwardSoftLimitEnable(false, CAN_TIMEOUT_MSEC);
-        aMotor.configForwardSoftLimitThreshold(0, CAN_TIMEOUT_MSEC);
-        aMotor.configReverseLimitSwitchSource(LimitSwitchSource.Deactivated, LimitSwitchNormal.Disabled, CAN_TIMEOUT_MSEC);
-        aMotor.configReverseSoftLimitEnable(false, CAN_TIMEOUT_MSEC);
-        aMotor.configReverseSoftLimitThreshold(0, CAN_TIMEOUT_MSEC);
+        // aMotor.configForwardLimitSwitchSource(LimitSwitchSource.Deactivated, LimitSwitchNormal.Disabled, CAN_TIMEOUT_MSEC);
+        // aMotor.configForwardSoftLimitEnable(false, CAN_TIMEOUT_MSEC);
+        // aMotor.configForwardSoftLimitThreshold(0, CAN_TIMEOUT_MSEC);
+        // aMotor.configReverseLimitSwitchSource(LimitSwitchSource.Deactivated, LimitSwitchNormal.Disabled, CAN_TIMEOUT_MSEC);
+        // aMotor.configReverseSoftLimitEnable(false, CAN_TIMEOUT_MSEC);
+        // aMotor.configReverseSoftLimitThreshold(0, CAN_TIMEOUT_MSEC);
 
         // Disable motion magic and profile features until we know we are going to use them
-        aMotor.configMotionAcceleration(0, CAN_TIMEOUT_MSEC);
-        aMotor.configMotionCruiseVelocity(0, CAN_TIMEOUT_MSEC);
-        aMotor.configMotionProfileTrajectoryPeriod(0, CAN_TIMEOUT_MSEC);
+        // aMotor.configMotionAcceleration(0, CAN_TIMEOUT_MSEC);
+        // aMotor.configMotionCruiseVelocity(0, CAN_TIMEOUT_MSEC);
+        // aMotor.configMotionProfileTrajectoryPeriod(0, CAN_TIMEOUT_MSEC);
 
         // Reinforce factor default deadband and minimum output
         aMotor.configNeutralDeadband(0.04, CAN_TIMEOUT_MSEC);
-        aMotor.configNominalOutputForward(0.0, CAN_TIMEOUT_MSEC);
-        aMotor.configNominalOutputReverse(0.0, CAN_TIMEOUT_MSEC);
+        // aMotor.configNominalOutputForward(0.0, CAN_TIMEOUT_MSEC);
+        // aMotor.configNominalOutputReverse(0.0, CAN_TIMEOUT_MSEC);
 
-        aMotor.configPeakOutputForward(1.0, CAN_TIMEOUT_MSEC);
-        aMotor.configPeakOutputReverse(1.0, CAN_TIMEOUT_MSEC);
+        // aMotor.configPeakOutputForward(1.0, CAN_TIMEOUT_MSEC);
+        // aMotor.configPeakOutputReverse(1.0, CAN_TIMEOUT_MSEC);
 
         // Feedback sources, start with no local and no remote sensors
         // NOTE: Remote sensors can be things like the Pigeon IMU
-        aMotor.configRemoteFeedbackFilter(0, RemoteSensorSource.Off, 0, CAN_TIMEOUT_MSEC);        
+
+        // aMotor.configRemoteFeedbackFilter(0, RemoteSensorSource.Off, 0, CAN_TIMEOUT_MSEC);        
         for (int pidIdx = 0; pidIdx <= 1; ++pidIdx)
         {
-            aMotor.configSelectedFeedbackCoefficient(1.0, pidIdx, CAN_TIMEOUT_MSEC);
-            aMotor.configSelectedFeedbackSensor(FeedbackDevice.None, pidIdx, CAN_TIMEOUT_MSEC);
+            // aMotor.configSelectedFeedbackCoefficient(1.0, pidIdx, CAN_TIMEOUT_MSEC);
+            // aMotor.configSelectedFeedbackSensor(FeedbackDevice.None, pidIdx, CAN_TIMEOUT_MSEC);
 
-            aMotor.setIntegralAccumulator(0, pidIdx, CAN_TIMEOUT_MSEC);
-            aMotor.setSelectedSensorPosition(0, pidIdx, CAN_TIMEOUT_MSEC);
+            // aMotor.setIntegralAccumulator(0, pidIdx, CAN_TIMEOUT_MSEC);
+            // aMotor.setSelectedSensorPosition(0, pidIdx, CAN_TIMEOUT_MSEC);
         }
 
         // TODO: Figure out what these do!!!!
@@ -183,48 +181,48 @@ public class DriveSubsystem extends Subsystem {
         //aMotor.configVelocityMeasurementPeriod(period, CAN_TIMEOUT_MSEC);
         //aMotor.configVelocityMeasurementWindow(windowSize, CAN_TIMEOUT_MSEC);
 
-        aMotor.enableVoltageCompensation(false);
-        aMotor.configVoltageCompSaturation(12.0, CAN_TIMEOUT_MSEC);
-        aMotor.configVoltageMeasurementFilter(32, CAN_TIMEOUT_MSEC);  // Default
+        // aMotor.enableVoltageCompensation(false);
+        // aMotor.configVoltageCompSaturation(12.0, CAN_TIMEOUT_MSEC);
+        // aMotor.configVoltageMeasurementFilter(32, CAN_TIMEOUT_MSEC);  // Default
         
         // Reinforce control frame period defaults
         // NOTE: Decreasing general control frame period to 1 ms will increase CAN traffic by about 15%
         aMotor.setControlFramePeriod(ControlFrame.Control_3_General, 10);
         // TODO: aMotor.setControlFramePeriod(ControlFrame.Control_4_Advanced, 10);
-        aMotor.setControlFramePeriod(ControlFrame.Control_6_MotProfAddTrajPoint, 10);
+        //aMotor.setControlFramePeriod(ControlFrame.Control_6_MotProfAddTrajPoint, 10);
 
 
         aMotor.setNeutralMode(NeutralMode.Brake);
 
-        aMotor.setSafetyEnabled(false);
-        aMotor.setExpiration(0.500);
+        // aMotor.setSafetyEnabled(false);
+        // aMotor.setExpiration(0.500);
 
         aMotor.setInverted(false);
         aMotor.setSensorPhase(false);
 
         // Reinforce the factory defaults that we might change later
         // TODO: To improve CAN bus utilization consider setting the unused one to even lower rates (longer periods)
-        aMotor.setStatusFramePeriod(StatusFrameEnhanced.Status_1_General,        10, CAN_TIMEOUT_MSEC);
-        aMotor.setStatusFramePeriod(StatusFrameEnhanced.Status_2_Feedback0,      20, CAN_TIMEOUT_MSEC);
-        aMotor.setStatusFramePeriod(StatusFrameEnhanced.Status_3_Quadrature,    160, CAN_TIMEOUT_MSEC);
-        aMotor.setStatusFramePeriod(StatusFrameEnhanced.Status_4_AinTempVbat,   160, CAN_TIMEOUT_MSEC);
-        aMotor.setStatusFramePeriod(StatusFrameEnhanced.Status_8_PulseWidth,    160, CAN_TIMEOUT_MSEC);
-        aMotor.setStatusFramePeriod(StatusFrameEnhanced.Status_10_MotionMagic,  160, CAN_TIMEOUT_MSEC);
-        aMotor.setStatusFramePeriod(StatusFrameEnhanced.Status_13_Base_PIDF0,   160, CAN_TIMEOUT_MSEC);
+        // aMotor.setStatusFramePeriod(StatusFrameEnhanced.Status_1_General,        10, CAN_TIMEOUT_MSEC);
+        // aMotor.setStatusFramePeriod(StatusFrameEnhanced.Status_2_Feedback0,      20, CAN_TIMEOUT_MSEC);
+        // aMotor.setStatusFramePeriod(StatusFrameEnhanced.Status_3_Quadrature,    160, CAN_TIMEOUT_MSEC);
+        // aMotor.setStatusFramePeriod(StatusFrameEnhanced.Status_4_AinTempVbat,   160, CAN_TIMEOUT_MSEC);
+        // aMotor.setStatusFramePeriod(StatusFrameEnhanced.Status_8_PulseWidth,    160, CAN_TIMEOUT_MSEC);
+        // aMotor.setStatusFramePeriod(StatusFrameEnhanced.Status_10_MotionMagic,  160, CAN_TIMEOUT_MSEC);
+        // aMotor.setStatusFramePeriod(StatusFrameEnhanced.Status_13_Base_PIDF0,   160, CAN_TIMEOUT_MSEC);
 
-        aMotor.selectDemandType(false);   // Future feature
+        // aMotor.selectDemandType(false);   // Future feature
 
         // TODO: Read faults before clearing?
-        aMotor.clearMotionProfileHasUnderrun(CAN_TIMEOUT_MSEC);
-        aMotor.clearStickyFaults(CAN_TIMEOUT_MSEC);
+        // aMotor.clearMotionProfileHasUnderrun(CAN_TIMEOUT_MSEC);
+        // aMotor.clearStickyFaults(CAN_TIMEOUT_MSEC);
 
-        aMotor.changeMotionControlFramePeriod(25);  // Assume that any motion profile will step at 50 ms
-        aMotor.clearMotionProfileTrajectories();
-        aMotor.enableHeadingHold(false); // Future feature
+        // aMotor.changeMotionControlFramePeriod(25);  // Assume that any motion profile will step at 50 ms
+        // aMotor.clearMotionProfileTrajectories();
+        // aMotor.enableHeadingHold(false); // Future feature
 
         // Use constants from slot 0 and loop 0 (i.e., primary PID) for basic closed loop control
         // See SRM Section 9.10 for more information about the Auxilliary loop
-        aMotor.selectProfileSlot(0, 0);
+        // aMotor.selectProfileSlot(0, 0);
 
     }
     /***
@@ -242,17 +240,10 @@ public class DriveSubsystem extends Subsystem {
         // ones that are needed immediately at initialization because they are
         // generated once
         SmartDashboard.putData("DriveStyles", driveStyleChooser);
-        SmartDashboard.putBoolean("DriveTelemetryEnabled", telemetryEnabled);
-
-        // Set up follower commands only once to minimize CAN traffic
-        for (int i = 1; i < leftMotors.length; ++i) 
-        {
-            leftMotors[i].follow(leftMotors[0]);
-        }
-        for (int i = 1; i < rightMotors.length; ++i) 
-        {
-            rightMotors[i].follow(rightMotors[0]);
-        }
+        SmartDashboard.putBoolean("DriveTelemetryEnabled",false);
+        SmartDashboard.putBoolean("TestDriveEnabled",false);
+        SmartDashboard.putNumber("LeftTestSpeed", 0.0);
+        SmartDashboard.putNumber("RightTestSpeed",0.0);
 
         // Loop through each motor to configure every setting for deterministic
         // behavior.
@@ -265,22 +256,38 @@ public class DriveSubsystem extends Subsystem {
         {
             initializeMotor(leftMotors[i]);
         }
+        for (int i = 0; i < rightMotors.length; ++i)
+        {
+            initializeMotor(rightMotors[i]);
+        }
+
+        // Set up follower commands only once to minimize CAN traffic
+        for (int i = 1; i < leftMotors.length; ++i) 
+        {
+            leftMotors[i].follow(leftMotors[0]);
+        }
+        for (int i = 1; i < rightMotors.length; ++i) 
+        {
+            rightMotors[i].follow(rightMotors[0]);
+        }
 
         // Configure primary motor sensor device for all feedback loops
-        for (int pidIndex = 0; pidIndex <= 1; ++pidIndex)
+        for (int pidIndex = 0; pidIndex <= 0; ++pidIndex)
         {
             ErrorCode errorCode = leftMotors[0].configSelectedFeedbackSensor(FEEDBACK_DEVICE, pidIndex, CAN_TIMEOUT_MSEC);
+            leftMotors[0].setSelectedSensorPosition(0, pidIndex, CAN_TIMEOUT_MSEC);
             if (ErrorCode.OK != errorCode)
             {
                 // TODO: Insert error message or telemetry status here
             }
-            rightMotors[0].configSelectedFeedbackSensor(FEEDBACK_DEVICE, pidIndex, CAN_TIMEOUT_MSEC);
             errorCode = rightMotors[0].configSelectedFeedbackSensor(FEEDBACK_DEVICE, pidIndex, CAN_TIMEOUT_MSEC);
+            rightMotors[0].setSelectedSensorPosition(0, pidIndex, CAN_TIMEOUT_MSEC);
             if (ErrorCode.OK != errorCode)
             {
                 // TODO: Insert error message or telemetry status here
             }            
         }
+        leftMotors[0].setSensorPhase(true);
 
         disable();
     }
@@ -307,28 +314,28 @@ public class DriveSubsystem extends Subsystem {
      */
     public void drive(Joystick control)     // TODO: Not sure I like this, may just want separate functions with speed/turn or left/right args
     {
+		double speed = control.getRawAxis(PS4Constants.LEFT_STICK_Y.getValue());
+        double turn  = control.getRawAxis(PS4Constants.RIGHT_STICK_X.getValue());
+        double rightSpeed = control.getRawAxis(PS4Constants.RIGHT_STICK_Y.getValue());
+
+        SmartDashboard.putNumber("speed", speed);
+        SmartDashboard.putNumber("turn", turn);
         switch (driveStyleChooser.getSelected())
         {
             default:
             case WPI_ARCADE:
             {
-                double speed = control.getX(Hand.kRight);
-                double turn  = control.getY(Hand.kRight);
                 drive.arcadeDrive(speed, turn, false); // Don't square yet, will work on scaler later as new Joystick type
                 break;
             }
             case WPI_CURVATURE:
             {
-                double speed = control.getX(Hand.kRight);
-                double turn  = control.getY(Hand.kRight);
                 drive.curvatureDrive(speed, turn, Math.abs(speed)<0.25); // Use quickturn logic when speed is "low"
                 break;
             }
             case WPI_TANK:
             {
-                double leftSpeed = control.getX(Hand.kRight);
-                double rightSpeed = control.getZ();
-                drive.tankDrive(leftSpeed, rightSpeed);
+                drive.tankDrive(speed, rightSpeed);
                 break;
             }
             case MODIFIED_ARCADE:
@@ -354,22 +361,28 @@ public class DriveSubsystem extends Subsystem {
         for (int i = 0; i < leftMotors.length; ++i) 
         {
             leftCurrent_amp[i] = leftMotors[i].getOutputCurrent();
+            SmartDashboard.putNumber("leftCurrent_amp"+Integer.toString(i), leftCurrent_amp[i]);
         }
         for (int i = 0; i < rightMotors.length; ++i) 
         {
             rightCurrent_amp[i] = rightMotors[i].getOutputCurrent();
+            SmartDashboard.putNumber("rightCurrent_amp"+Integer.toString(i), rightCurrent_amp[i]);
         }
-        SmartDashboard.putNumberArray("leftCurrent_amp", leftCurrent_amp);
-        SmartDashboard.putNumberArray("rightCurrent_amp", rightCurrent_amp);
     }
 
     @Override
     public void periodic() 
     {
-        telemetryEnabled = SmartDashboard.getBoolean("DriveTelemetryEnabled",false);
-        if (telemetryEnabled)
+        if (SmartDashboard.getBoolean("DriveTelemetryEnabled",false))
         {
             telemetry();
+        }
+        if (SmartDashboard.getBoolean("TestDriveEnabled",false))
+        {
+            double leftSpeed = SmartDashboard.getNumber("LeftTestSpeed", 0.0);
+            double rightSpeed = SmartDashboard.getNumber("RightTestSpeed",0.0);
+            leftMotors[0].set(leftSpeed);
+            rightMotors[0].set(rightSpeed);
         }
     }
 }
