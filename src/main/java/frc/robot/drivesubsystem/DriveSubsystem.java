@@ -7,7 +7,6 @@
 
 package frc.robot.drivesubsystem;
 
-import frc.robot.IdGroup;
 import frc.robot.PS4Constants;
 
 import com.ctre.phoenix.motorcontrol.ControlFrame;

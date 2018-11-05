@@ -2,8 +2,6 @@ package frc.robot;
 
 import com.ctre.phoenix.motorcontrol.FeedbackDevice;
 
-import frc.robot.IdGroup;
-
 public class RobotMap
 {
     public static int DRIVER_JOYSTICK_ID = 0;
