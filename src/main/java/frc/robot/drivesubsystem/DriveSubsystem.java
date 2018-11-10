@@ -317,8 +317,6 @@ public class DriveSubsystem extends Subsystem {
         double turn  = control.getRawAxis(PS4Constants.RIGHT_STICK_X.getValue());
         double rightSpeed = control.getRawAxis(PS4Constants.RIGHT_STICK_Y.getValue());
 
-        SmartDashboard.putNumber("speed", speed);
-        SmartDashboard.putNumber("turn", turn);
         switch (driveStyleChooser.getSelected())
         {
             default:

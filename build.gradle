@@ -5,6 +5,10 @@ plugins {
 
 def ROBOT_CLASS = "frc.robot.Robot"
 
+repositories {
+    maven { url "https://maven.atlassian.com/3rdparty/" }
+    maven { url "http://repo.maven.apache.org/maven2" }
+}
 // Define my targets (RoboRIO) and artifacts (deployable files)
 // This is added by GradleRIO's backing project EmbeddedTools.
 deploy {
@@ -33,7 +37,7 @@ dependencies {
     compile ctre()
     compile navx()
     compile pathfinder()
-    //compile jssc()
+    compile 'org.scream3r:jssc:2.8.0'
 }
 
 // Setting up my Jar File. In this case, adding all libraries into the main jar ('fat jar')
