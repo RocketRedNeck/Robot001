@@ -274,13 +274,17 @@ public class DriveSubsystem extends Subsystem {
         for (int pidIndex = 0; pidIndex <= 0; ++pidIndex)
         {
             ErrorCode errorCode = leftMotors[0].configSelectedFeedbackSensor(FEEDBACK_DEVICE, pidIndex, CAN_TIMEOUT_MSEC);
+            leftMotors[1].configSelectedFeedbackSensor(FEEDBACK_DEVICE, pidIndex, CAN_TIMEOUT_MSEC);
             leftMotors[0].setSelectedSensorPosition(0, pidIndex, CAN_TIMEOUT_MSEC);
+            leftMotors[1].setSelectedSensorPosition(0, pidIndex, CAN_TIMEOUT_MSEC);
             if (ErrorCode.OK != errorCode)
             {
                 // TODO: Insert error message or telemetry status here
             }
             errorCode = rightMotors[0].configSelectedFeedbackSensor(FEEDBACK_DEVICE, pidIndex, CAN_TIMEOUT_MSEC);
+            rightMotors[1].configSelectedFeedbackSensor(FEEDBACK_DEVICE, pidIndex, CAN_TIMEOUT_MSEC);
             rightMotors[0].setSelectedSensorPosition(0, pidIndex, CAN_TIMEOUT_MSEC);
+            rightMotors[1].setSelectedSensorPosition(0, pidIndex, CAN_TIMEOUT_MSEC);
             if (ErrorCode.OK != errorCode)
             {
                 // TODO: Insert error message or telemetry status here
@@ -314,7 +318,7 @@ public class DriveSubsystem extends Subsystem {
     public void drive(Joystick control)     // TODO: Not sure I like this, may just want separate functions with speed/turn or left/right args
     {
 		double speed = control.getRawAxis(PS4Constants.LEFT_STICK_Y.getValue());
-        double turn  = control.getRawAxis(PS4Constants.RIGHT_STICK_X.getValue());
+        double turn  = -control.getRawAxis(PS4Constants.RIGHT_STICK_X.getValue());
         double rightSpeed = control.getRawAxis(PS4Constants.RIGHT_STICK_Y.getValue());
 
         switch (driveStyleChooser.getSelected())
@@ -322,17 +326,17 @@ public class DriveSubsystem extends Subsystem {
             default:
             case WPI_ARCADE:
             {
-                drive.arcadeDrive(speed, turn, false); // Don't square yet, will work on scaler later as new Joystick type
+                drive.arcadeDrive(0.4*speed, 0.2*turn, false); // Don't square yet, will work on scaler later as new Joystick type
                 break;
             }
             case WPI_CURVATURE:
             {
-                drive.curvatureDrive(speed, turn, Math.abs(speed)<0.25); // Use quickturn logic when speed is "low"
+                drive.curvatureDrive(0.4*speed, 0.2*turn, Math.abs(speed)<0.25); // Use quickturn logic when speed is "low"
                 break;
             }
             case WPI_TANK:
             {
-                drive.tankDrive(speed, rightSpeed);
+                drive.tankDrive(0.6*speed, 0.6*rightSpeed);
                 break;
             }
             case MODIFIED_ARCADE:
@@ -354,6 +358,11 @@ public class DriveSubsystem extends Subsystem {
         SmartDashboard.putNumber("leftVelocity_ticksPsec", leftVelocity_ticksPsec);
         SmartDashboard.putNumber("rightPosition_ticks", rightPosition_ticks);
         SmartDashboard.putNumber("rightVelocity_ticksPsec", rightVelocity_ticksPsec);
+
+        SmartDashboard.putNumber("leftRearPosition_ticks", leftMotors[1].getSelectedSensorPosition(0));
+        SmartDashboard.putNumber("leftRearVelocity_ticksPsec", leftMotors[1].getSelectedSensorVelocity(0)*10);
+        SmartDashboard.putNumber("rightRearPosition_ticks", rightMotors[1].getSelectedSensorPosition(0));
+        SmartDashboard.putNumber("rightRearVelocity_ticksPsec", rightMotors[1].getSelectedSensorVelocity(0)*10);
 
         for (int i = 0; i < leftMotors.length; ++i) 
         {
