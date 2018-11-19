@@ -38,18 +38,7 @@ public class DriveSubsystem extends Subsystem {
     private WPI_TalonSRX[] leftMotors;
     private WPI_TalonSRX[] rightMotors;
 
-    private double[] leftCurrent_amp;
-    private double[] rightCurrent_amp;
-
-    private double leftPosition_ticks;
-    private double rightPosition_ticks;
-
-    private double leftVelocity_ticksPsec;
-    private double rightVelocity_ticksPsec;
-
-
-    private final FeedbackDevice FEEDBACK_DEVICE;
-    private final int CAN_TIMEOUT_MSEC;
+    private final int NUM_MOTORS;
 
     private DifferentialDrive drive;
 
@@ -58,7 +47,6 @@ public class DriveSubsystem extends Subsystem {
         WPI_ARCADE, 
         WPI_CURVATURE, 
         WPI_TANK, 
-        MODIFIED_ARCADE,
         RIDICULOUS_MODE,
         TEST_VEL_MODE,
     };
@@ -68,39 +56,30 @@ public class DriveSubsystem extends Subsystem {
     /***
      * Constructor
      */
-    public DriveSubsystem(int[] leftIds, 
-                          int[] rightIds, 
-                          FeedbackDevice aFeedbackDevice,
-                          int aTimeout_msec) 
+    public DriveSubsystem() 
     {
+        assert RobotMap.DRIVE_MOTOR_LEFT_ID_GROUP.length == RobotMap.DRIVE_MOTOR_RIGHT_ID_GROUP.length : "Motor Count Must Be Symmetrical";
+        NUM_MOTORS = RobotMap.DRIVE_MOTOR_LEFT_ID_GROUP.length;
+
         driveStyleChooser = new SendableChooser<DriveStyles>(); // put this on the dashboard at initialization
-        driveStyleChooser.addDefault("WPI Arcade",      DriveStyles.WPI_ARCADE);
-        driveStyleChooser.addObject( "WPI Curvature",   DriveStyles.WPI_CURVATURE);
-        driveStyleChooser.addObject( "WPI Tank",        DriveStyles.WPI_TANK);
-        driveStyleChooser.addObject( "Modified Arcade", DriveStyles.MODIFIED_ARCADE);
-        driveStyleChooser.addObject( "Ridiculous Mode", DriveStyles.RIDICULOUS_MODE);
-        driveStyleChooser.addObject( "Test Vel Mode",   DriveStyles.TEST_VEL_MODE);
-
+        driveStyleChooser.setDefaultOption("WPI Arcade",    DriveStyles.WPI_ARCADE);
+        driveStyleChooser.addOption( "WPI Curvature",       DriveStyles.WPI_CURVATURE);
+        driveStyleChooser.addOption( "WPI Tank",            DriveStyles.WPI_TANK);
+        driveStyleChooser.addOption( "Ridiculous Mode",     DriveStyles.RIDICULOUS_MODE);
+        driveStyleChooser.addOption( "Test Vel Mode",       DriveStyles.TEST_VEL_MODE);
+        
         // Configure motors at initialiation
-        leftMotors = new WPI_TalonSRX[leftIds.length];
-        rightMotors = new WPI_TalonSRX[rightIds.length];
+        leftMotors = new WPI_TalonSRX[NUM_MOTORS];
+        rightMotors = new WPI_TalonSRX[NUM_MOTORS];
 
-        leftCurrent_amp = new double[leftMotors.length];
-        rightCurrent_amp = new double[rightMotors.length];
+        for (int i = 0; i < NUM_MOTORS; ++i) 
+        {
+            leftMotors[i] = new WPI_TalonSRX(RobotMap.DRIVE_MOTOR_LEFT_ID_GROUP[i]);
+            leftMotors[i].setName(getName(),"Left_" + Integer.toString(i));
 
-        for (int i = 0; i < leftMotors.length; ++i) 
-        {
-            leftMotors[i] = new WPI_TalonSRX(leftIds[i]);
-            leftMotors[i].setName(getName(),"Left_" + Integer.toString(i));            
-        }
-        for (int i = 0; i < rightMotors.length; ++i) 
-        {
-            rightMotors[i] = new WPI_TalonSRX(rightIds[i]);
+            rightMotors[i] = new WPI_TalonSRX(RobotMap.DRIVE_MOTOR_RIGHT_ID_GROUP[i]);
             rightMotors[i].setName(getName(),"Right_" + Integer.toString(i));            
         }
-
-        FEEDBACK_DEVICE = aFeedbackDevice;
-        CAN_TIMEOUT_MSEC = aTimeout_msec;
 
         // All other motors will be followers so we only need to initialize the drive
         // with the first motor in each group
@@ -125,70 +104,70 @@ public class DriveSubsystem extends Subsystem {
         // Group all of the slot configurations together for a loop
         for (int slotIdx = 0; slotIdx < 2; ++slotIdx)   // TODO: Source MAGIC NUMBER 2, what is the actual number of slots in the firmware?
         {
-            aMotor.config_IntegralZone(slotIdx, 0, CAN_TIMEOUT_MSEC);
-            aMotor.config_kF(slotIdx, 0.0, CAN_TIMEOUT_MSEC);
-            aMotor.config_kP(slotIdx, 0.0, CAN_TIMEOUT_MSEC);
-            aMotor.config_kI(slotIdx, 0.0, CAN_TIMEOUT_MSEC);
-            aMotor.config_kD(slotIdx, 0.0, CAN_TIMEOUT_MSEC);
-            aMotor.configClosedLoopPeakOutput(slotIdx, 1.0, CAN_TIMEOUT_MSEC);
-            aMotor.configClosedLoopPeriod(slotIdx, 1, CAN_TIMEOUT_MSEC);
-            aMotor.configMaxIntegralAccumulator(slotIdx, 0, CAN_TIMEOUT_MSEC);
-            aMotor.configAllowableClosedloopError(slotIdx, 0, CAN_TIMEOUT_MSEC);
+            aMotor.config_IntegralZone(slotIdx, 0, RobotMap.CAN_TIMEOUT_MSEC);
+            aMotor.config_kF(slotIdx, 0.0, RobotMap.CAN_TIMEOUT_MSEC);
+            aMotor.config_kP(slotIdx, 0.0, RobotMap.CAN_TIMEOUT_MSEC);
+            aMotor.config_kI(slotIdx, 0.0, RobotMap.CAN_TIMEOUT_MSEC);
+            aMotor.config_kD(slotIdx, 0.0, RobotMap.CAN_TIMEOUT_MSEC);
+            aMotor.configClosedLoopPeakOutput(slotIdx, 1.0, RobotMap.CAN_TIMEOUT_MSEC);
+            aMotor.configClosedLoopPeriod(slotIdx, 1, RobotMap.CAN_TIMEOUT_MSEC);
+            aMotor.configMaxIntegralAccumulator(slotIdx, 0, RobotMap.CAN_TIMEOUT_MSEC);
+            aMotor.configAllowableClosedloopError(slotIdx, 0, RobotMap.CAN_TIMEOUT_MSEC);
         }
 
-        // aMotor.configAuxPIDPolarity(false, CAN_TIMEOUT_MSEC);
+        // aMotor.configAuxPIDPolarity(false, RobotMap.CAN_TIMEOUT_MSEC);
 
-        aMotor.configOpenloopRamp(0.0, CAN_TIMEOUT_MSEC);
-        aMotor.configClosedloopRamp(0.0, CAN_TIMEOUT_MSEC);
+        aMotor.configOpenloopRamp(0.0, RobotMap.CAN_TIMEOUT_MSEC);
+        aMotor.configClosedloopRamp(0.0, RobotMap.CAN_TIMEOUT_MSEC);
 
         // Start with current limiting disabled and set to a large value
         aMotor.enableCurrentLimit(false);
-        aMotor.configContinuousCurrentLimit(90, CAN_TIMEOUT_MSEC);
-        aMotor.configPeakCurrentDuration(0, CAN_TIMEOUT_MSEC);
-        aMotor.configPeakCurrentLimit(0, CAN_TIMEOUT_MSEC);
+        aMotor.configContinuousCurrentLimit(90, RobotMap.CAN_TIMEOUT_MSEC);
+        aMotor.configPeakCurrentDuration(0, RobotMap.CAN_TIMEOUT_MSEC);
+        aMotor.configPeakCurrentLimit(0, RobotMap.CAN_TIMEOUT_MSEC);
 
         // Assume we have no limit switches associated with this motor
-        // aMotor.configForwardLimitSwitchSource(LimitSwitchSource.Deactivated, LimitSwitchNormal.Disabled, CAN_TIMEOUT_MSEC);
-        // aMotor.configForwardSoftLimitEnable(false, CAN_TIMEOUT_MSEC);
-        // aMotor.configForwardSoftLimitThreshold(0, CAN_TIMEOUT_MSEC);
-        // aMotor.configReverseLimitSwitchSource(LimitSwitchSource.Deactivated, LimitSwitchNormal.Disabled, CAN_TIMEOUT_MSEC);
-        // aMotor.configReverseSoftLimitEnable(false, CAN_TIMEOUT_MSEC);
-        // aMotor.configReverseSoftLimitThreshold(0, CAN_TIMEOUT_MSEC);
+        // aMotor.configForwardLimitSwitchSource(LimitSwitchSource.Deactivated, LimitSwitchNormal.Disabled, RobotMap.CAN_TIMEOUT_MSEC);
+        // aMotor.configForwardSoftLimitEnable(false, RobotMap.CAN_TIMEOUT_MSEC);
+        // aMotor.configForwardSoftLimitThreshold(0, RobotMap.CAN_TIMEOUT_MSEC);
+        // aMotor.configReverseLimitSwitchSource(LimitSwitchSource.Deactivated, LimitSwitchNormal.Disabled, RobotMap.CAN_TIMEOUT_MSEC);
+        // aMotor.configReverseSoftLimitEnable(false, RobotMap.CAN_TIMEOUT_MSEC);
+        // aMotor.configReverseSoftLimitThreshold(0, RobotMap.CAN_TIMEOUT_MSEC);
 
         // Disable motion magic and profile features until we know we are going to use them
-        // aMotor.configMotionAcceleration(0, CAN_TIMEOUT_MSEC);
-        // aMotor.configMotionCruiseVelocity(0, CAN_TIMEOUT_MSEC);
-        // aMotor.configMotionProfileTrajectoryPeriod(0, CAN_TIMEOUT_MSEC);
+        // aMotor.configMotionAcceleration(0, RobotMap.CAN_TIMEOUT_MSEC);
+        // aMotor.configMotionCruiseVelocity(0, RobotMap.CAN_TIMEOUT_MSEC);
+        // aMotor.configMotionProfileTrajectoryPeriod(0, RobotMap.CAN_TIMEOUT_MSEC);
 
         // Reinforce factor default deadband and minimum output
-        aMotor.configNeutralDeadband(0.04, CAN_TIMEOUT_MSEC);
-        // aMotor.configNominalOutputForward(0.0, CAN_TIMEOUT_MSEC);
-        // aMotor.configNominalOutputReverse(0.0, CAN_TIMEOUT_MSEC);
+        aMotor.configNeutralDeadband(0.04, RobotMap.CAN_TIMEOUT_MSEC);
+        // aMotor.configNominalOutputForward(0.0, RobotMap.CAN_TIMEOUT_MSEC);
+        // aMotor.configNominalOutputReverse(0.0, RobotMap.CAN_TIMEOUT_MSEC);
 
-        // aMotor.configPeakOutputForward(1.0, CAN_TIMEOUT_MSEC);
-        // aMotor.configPeakOutputReverse(1.0, CAN_TIMEOUT_MSEC);
+        // aMotor.configPeakOutputForward(1.0, RobotMap.CAN_TIMEOUT_MSEC);
+        // aMotor.configPeakOutputReverse(1.0, RobotMap.CAN_TIMEOUT_MSEC);
 
         // Feedback sources, start with no local and no remote sensors
         // NOTE: Remote sensors can be things like the Pigeon IMU
 
-        // aMotor.configRemoteFeedbackFilter(0, RemoteSensorSource.Off, 0, CAN_TIMEOUT_MSEC);        
+        // aMotor.configRemoteFeedbackFilter(0, RemoteSensorSource.Off, 0, RobotMap.CAN_TIMEOUT_MSEC);        
         for (int pidIdx = 0; pidIdx <= 1; ++pidIdx)
         {
-            // aMotor.configSelectedFeedbackCoefficient(1.0, pidIdx, CAN_TIMEOUT_MSEC);
-            // aMotor.configSelectedFeedbackSensor(FeedbackDevice.None, pidIdx, CAN_TIMEOUT_MSEC);
+            // aMotor.configSelectedFeedbackCoefficient(1.0, pidIdx, RobotMap.CAN_TIMEOUT_MSEC);
+            // aMotor.configSelectedFeedbackSensor(FeedbackDevice.None, pidIdx, RobotMap.CAN_TIMEOUT_MSEC);
 
-            // aMotor.setIntegralAccumulator(0, pidIdx, CAN_TIMEOUT_MSEC);
-            // aMotor.setSelectedSensorPosition(0, pidIdx, CAN_TIMEOUT_MSEC);
+            // aMotor.setIntegralAccumulator(0, pidIdx, RobotMap.CAN_TIMEOUT_MSEC);
+            // aMotor.setSelectedSensorPosition(0, pidIdx, RobotMap.CAN_TIMEOUT_MSEC);
         }
 
         // TODO: Figure out what these do!!!!
-        //aMotor.configSensorTerm(sensorTerm, feedbackDevice, CAN_TIMEOUT_MSEC);
-        //aMotor.configVelocityMeasurementPeriod(period, CAN_TIMEOUT_MSEC);
-        //aMotor.configVelocityMeasurementWindow(windowSize, CAN_TIMEOUT_MSEC);
+        //aMotor.configSensorTerm(sensorTerm, feedbackDevice, RobotMap.CAN_TIMEOUT_MSEC);
+        //aMotor.configVelocityMeasurementPeriod(period, RobotMap.CAN_TIMEOUT_MSEC);
+        //aMotor.configVelocityMeasurementWindow(windowSize, RobotMap.CAN_TIMEOUT_MSEC);
 
         // aMotor.enableVoltageCompensation(false);
-        // aMotor.configVoltageCompSaturation(12.0, CAN_TIMEOUT_MSEC);
-        // aMotor.configVoltageMeasurementFilter(32, CAN_TIMEOUT_MSEC);  // Default
+        // aMotor.configVoltageCompSaturation(12.0, RobotMap.CAN_TIMEOUT_MSEC);
+        // aMotor.configVoltageMeasurementFilter(32, RobotMap.CAN_TIMEOUT_MSEC);  // Default
         
         // Reinforce control frame period defaults
         // NOTE: Decreasing general control frame period to 1 ms will increase CAN traffic by about 15%
@@ -207,19 +186,19 @@ public class DriveSubsystem extends Subsystem {
 
         // Reinforce the factory defaults that we might change later
         // TODO: To improve CAN bus utilization consider setting the unused one to even lower rates (longer periods)
-        // aMotor.setStatusFramePeriod(StatusFrameEnhanced.Status_1_General,        10, CAN_TIMEOUT_MSEC);
-        // aMotor.setStatusFramePeriod(StatusFrameEnhanced.Status_2_Feedback0,      20, CAN_TIMEOUT_MSEC);
-        // aMotor.setStatusFramePeriod(StatusFrameEnhanced.Status_3_Quadrature,    160, CAN_TIMEOUT_MSEC);
-        // aMotor.setStatusFramePeriod(StatusFrameEnhanced.Status_4_AinTempVbat,   160, CAN_TIMEOUT_MSEC);
-        // aMotor.setStatusFramePeriod(StatusFrameEnhanced.Status_8_PulseWidth,    160, CAN_TIMEOUT_MSEC);
-        // aMotor.setStatusFramePeriod(StatusFrameEnhanced.Status_10_MotionMagic,  160, CAN_TIMEOUT_MSEC);
-        // aMotor.setStatusFramePeriod(StatusFrameEnhanced.Status_13_Base_PIDF0,   160, CAN_TIMEOUT_MSEC);
+        // aMotor.setStatusFramePeriod(StatusFrameEnhanced.Status_1_General,        10, RobotMap.CAN_TIMEOUT_MSEC);
+        // aMotor.setStatusFramePeriod(StatusFrameEnhanced.Status_2_Feedback0,      20, RobotMap.CAN_TIMEOUT_MSEC);
+        // aMotor.setStatusFramePeriod(StatusFrameEnhanced.Status_3_Quadrature,    160, RobotMap.CAN_TIMEOUT_MSEC);
+        // aMotor.setStatusFramePeriod(StatusFrameEnhanced.Status_4_AinTempVbat,   160, RobotMap.CAN_TIMEOUT_MSEC);
+        // aMotor.setStatusFramePeriod(StatusFrameEnhanced.Status_8_PulseWidth,    160, RobotMap.CAN_TIMEOUT_MSEC);
+        // aMotor.setStatusFramePeriod(StatusFrameEnhanced.Status_10_MotionMagic,  160, RobotMap.CAN_TIMEOUT_MSEC);
+        // aMotor.setStatusFramePeriod(StatusFrameEnhanced.Status_13_Base_PIDF0,   160, RobotMap.CAN_TIMEOUT_MSEC);
 
         // aMotor.selectDemandType(false);   // Future feature
 
         // TODO: Read faults before clearing?
-        // aMotor.clearMotionProfileHasUnderrun(CAN_TIMEOUT_MSEC);
-        // aMotor.clearStickyFaults(CAN_TIMEOUT_MSEC);
+        // aMotor.clearMotionProfileHasUnderrun(RobotMap.CAN_TIMEOUT_MSEC);
+        // aMotor.clearStickyFaults(RobotMap.CAN_TIMEOUT_MSEC);
 
         // aMotor.changeMotionControlFramePeriod(25);  // Assume that any motion profile will step at 50 ms
         // aMotor.clearMotionProfileTrajectories();
@@ -239,6 +218,19 @@ public class DriveSubsystem extends Subsystem {
      */
     public void initialize() 
     {
+        // There are times when we won't send any commands to the motor and we would
+        // like to suppress the motor safety logic to prevent complaints.
+        // TODO: We may consider changing this at some point to ensure the robot does
+        // not keep moving if there is a timing problem
+        drive.setSafetyEnabled(false);
+
+        // Don't let the drive class maintain the inversion
+        // Instead we will control the inversion state directly
+        // within the motor controller instances so we can keep
+        // the polarity and sensor phase sensible for all operating
+        // modes
+        drive.setRightSideInverted(false);
+
         // Set up all of the initial smartdashboard items in one place so they are
         // easier to find. Some will only be generated when telemetry is enabled
         // and others are generated in periodic cycles, so these items are the
@@ -257,64 +249,50 @@ public class DriveSubsystem extends Subsystem {
         // to be delivered we would design the system with a separate programming
         // state to push the values; this would save boot time and wear-and-tear
         // of the flash memory
-        for (int i = 0; i < leftMotors.length; ++i)
+        for (int i = 0; i < NUM_MOTORS; ++i)
         {
             initializeMotor(leftMotors[i]);
-        }
-        for (int i = 0; i < rightMotors.length; ++i)
-        {
-            initializeMotor(rightMotors[i]);
-        }
+            leftMotors[i].setInverted(true);        // TODO: Robot Map
 
-        // Set up follower commands only once to minimize CAN traffic
-        for (int i = 1; i < leftMotors.length; ++i) 
-        {
-            leftMotors[i].follow(leftMotors[0]);
-        }
-        for (int i = 1; i < rightMotors.length; ++i) 
-        {
-            rightMotors[i].follow(rightMotors[0]);
+            initializeMotor(rightMotors[i]);
+            rightMotors[i].setInverted(false);      // TODO: Robot Map      
         }
 
         // Configure primary motor sensor device for all feedback loops
         for (int pidIndex = 0; pidIndex <= 0; ++pidIndex)
         {
-            ErrorCode errorCode = leftMotors[0].configSelectedFeedbackSensor(FEEDBACK_DEVICE, pidIndex, CAN_TIMEOUT_MSEC);
-            leftMotors[1].configSelectedFeedbackSensor(FEEDBACK_DEVICE, pidIndex, CAN_TIMEOUT_MSEC);
-            leftMotors[0].setSelectedSensorPosition(0, pidIndex, CAN_TIMEOUT_MSEC);
-            leftMotors[1].setSelectedSensorPosition(0, pidIndex, CAN_TIMEOUT_MSEC);
-            if (ErrorCode.OK != errorCode)
+            for (int i = 0; i < NUM_MOTORS; ++i)
             {
-                // TODO: Insert error message or telemetry status here
+                leftMotors[i].configSelectedFeedbackSensor(RobotMap.DRIVE_MOTOR_FEEDBACK_DEVICE, pidIndex, RobotMap.CAN_TIMEOUT_MSEC);
+                leftMotors[i].setSelectedSensorPosition(0, pidIndex, RobotMap.CAN_TIMEOUT_MSEC);
+                leftMotors[i].setSensorPhase(true); /// TODO: Robot Map
+
+                rightMotors[i].configSelectedFeedbackSensor(RobotMap.DRIVE_MOTOR_FEEDBACK_DEVICE, pidIndex, RobotMap.CAN_TIMEOUT_MSEC);
+                rightMotors[i].setSelectedSensorPosition(0, pidIndex, RobotMap.CAN_TIMEOUT_MSEC);
+                rightMotors[i].setSensorPhase(false);   /// TODO: Robot Map
             }
-            errorCode = rightMotors[0].configSelectedFeedbackSensor(FEEDBACK_DEVICE, pidIndex, CAN_TIMEOUT_MSEC);
-            rightMotors[1].configSelectedFeedbackSensor(FEEDBACK_DEVICE, pidIndex, CAN_TIMEOUT_MSEC);
-            rightMotors[0].setSelectedSensorPosition(0, pidIndex, CAN_TIMEOUT_MSEC);
-            rightMotors[1].setSelectedSensorPosition(0, pidIndex, CAN_TIMEOUT_MSEC);
-            if (ErrorCode.OK != errorCode)
-            {
-                // TODO: Insert error message or telemetry status here
-            }            
         }
-        leftMotors[0].setSensorPhase(true);
-        leftMotors[1].setSensorPhase(true);
 
-        rightMotors[0].setSensorPhase(false);
-        rightMotors[1].setSensorPhase(false);
+        leftMotors[0].config_kF(0, 0.07764705882, RobotMap.CAN_TIMEOUT_MSEC);
+        //leftMotors[0].config_kP(0, 0.0525, RobotMap.CAN_TIMEOUT_MSEC);
 
-        leftMotors[0].config_kF(0, 0.07764705882, CAN_TIMEOUT_MSEC);
-        //leftMotors[0].config_kP(0, 0.0525, CAN_TIMEOUT_MSEC);
+        leftMotors[1].config_kF(0, 0.09007660474, RobotMap.CAN_TIMEOUT_MSEC);
+        //leftMotors[1].config_kP(0, 0.0445, RobotMap.CAN_TIMEOUT_MSEC);
 
-        leftMotors[1].config_kF(0, 0.09007660474, CAN_TIMEOUT_MSEC);
-        //leftMotors[1].config_kP(0, 0.0445, CAN_TIMEOUT_MSEC);
 
-        
-        rightMotors[0].config_kF(0, 0.09305075496, CAN_TIMEOUT_MSEC);
-        rightMotors[0].config_kP(0, 0.1411, CAN_TIMEOUT_MSEC);
+        rightMotors[0].config_kF(0, 0.09305075496, RobotMap.CAN_TIMEOUT_MSEC);
+        rightMotors[0].config_kP(0, 0.1411, RobotMap.CAN_TIMEOUT_MSEC);
 
-        rightMotors[1].config_kF(0, 0.08079930495, CAN_TIMEOUT_MSEC);
-        rightMotors[1].config_kP(0, 0.2728/2, CAN_TIMEOUT_MSEC);
+        rightMotors[1].config_kF(0, 0.08079930495, RobotMap.CAN_TIMEOUT_MSEC);
+        rightMotors[1].config_kP(0, 0.2728/2, RobotMap.CAN_TIMEOUT_MSEC);
 
+        // Set up follower commands only once to minimize CAN traffic
+        // when not in closed loop control
+        for (int i = 1; i < NUM_MOTORS; ++i) 
+        {
+            leftMotors[i].follow(leftMotors[0]);
+            rightMotors[i].follow(rightMotors[0]);
+        }
         disable();
     }
 
@@ -340,6 +318,7 @@ public class DriveSubsystem extends Subsystem {
      */
     public void drive(Joystick control)     // TODO: Not sure I like this, may just want separate functions with speed/turn or left/right args
     {
+        // TODO: Move to OI as functional interface
 		double speed = control.getRawAxis(PS4Constants.LEFT_STICK_Y.getValue());
         double turn  = -control.getRawAxis(PS4Constants.RIGHT_STICK_X.getValue());
         double rightSpeed = control.getRawAxis(PS4Constants.RIGHT_STICK_Y.getValue());
@@ -362,10 +341,6 @@ public class DriveSubsystem extends Subsystem {
                 drive.tankDrive(0.6*speed, 0.6*rightSpeed);
                 break;
             }
-            case MODIFIED_ARCADE:
-            {
-                break;
-            }
             case RIDICULOUS_MODE:
             {
                 leftMotors[0].set(speed);
@@ -376,25 +351,25 @@ public class DriveSubsystem extends Subsystem {
             {
                 if (control.getRawButton(PS4Constants.CIRCLE.getValue()))
                 {
-                    double RPM = 100.0;
-                    double TICKS_PER_REV_PER_100MS_PER_MIN = RobotMap.DRIVE_MOTOR_FEEDBACK_TICK_PER_REV/600.0;
-                    double DISPLAY_SCALE = 1.0;// TICKS_PER_REV_PER_100MS_PER_MIN;
+                    double rpm = 100.0;
+                    double ticksP100ms = rpm * RobotMap.TICKS_PER_REV_PER_100MS_PER_MIN;
+                    SmartDashboard.putNumber("velocityCommand_ticksP100ms", ticksP100ms);
 
-                    leftMotors[0].set(ControlMode.Velocity,   RPM * TICKS_PER_REV_PER_100MS_PER_MIN);
-                    leftMotors[1].set(ControlMode.Velocity,   RPM * TICKS_PER_REV_PER_100MS_PER_MIN);
-                    rightMotors[0].set(ControlMode.Velocity, -RPM * TICKS_PER_REV_PER_100MS_PER_MIN);
-                    rightMotors[1].set(ControlMode.Velocity, -RPM * TICKS_PER_REV_PER_100MS_PER_MIN);
-
-                    SmartDashboard.putNumber("LeftVelocityError 0",  DISPLAY_SCALE * leftMotors[0].getClosedLoopError(0));
-                    SmartDashboard.putNumber("LeftVelocityError 1", DISPLAY_SCALE * leftMotors[1].getClosedLoopError(0));
-                    SmartDashboard.putNumber("RightVelocityError 0", DISPLAY_SCALE * rightMotors[0].getClosedLoopError(0));
-                    SmartDashboard.putNumber("RightVelocityError 1", DISPLAY_SCALE * rightMotors[1].getClosedLoopError(0));
-
+                    for (int i = 0; i < NUM_MOTORS; ++i)
+                    {
+                        leftMotors[i].set(ControlMode.Velocity,   ticksP100ms);
+                        rightMotors[i].set(ControlMode.Velocity,  ticksP100ms);
+                    }
                 }
                 else
                 {
-                    leftMotors[1].follow(leftMotors[0]);
-                    rightMotors[1].follow(rightMotors[0]);
+                    // Force follower when exiting the control
+                    // TODO: Consider a more robust or encapsulated way of doing this
+                    for (int i = 1; i < NUM_MOTORS; ++i) 
+                    {
+                        leftMotors[i].follow(leftMotors[0]);
+                        rightMotors[i].follow(rightMotors[0]);
+                    }
                 }
                 break;
             }
@@ -403,31 +378,21 @@ public class DriveSubsystem extends Subsystem {
 
     private void telemetry()
     {
-        leftPosition_ticks = leftMotors[0].getSelectedSensorPosition(0);
-        leftVelocity_ticksPsec = leftMotors[0].getSelectedSensorVelocity(0)*10;
-
-        rightPosition_ticks = rightMotors[0].getSelectedSensorPosition(0);
-        rightVelocity_ticksPsec = rightMotors[0].getSelectedSensorVelocity(0)*10;
-
-        SmartDashboard.putNumber("leftPosition_ticks", leftPosition_ticks);
-        SmartDashboard.putNumber("leftVelocity_ticksPsec", leftVelocity_ticksPsec);
-        SmartDashboard.putNumber("rightPosition_ticks", rightPosition_ticks);
-        SmartDashboard.putNumber("rightVelocity_ticksPsec", rightVelocity_ticksPsec);
-
-        SmartDashboard.putNumber("leftRearPosition_ticks", leftMotors[1].getSelectedSensorPosition(0));
-        SmartDashboard.putNumber("leftRearVelocity_ticksPsec", leftMotors[1].getSelectedSensorVelocity(0)*10);
-        SmartDashboard.putNumber("rightRearPosition_ticks", rightMotors[1].getSelectedSensorPosition(0));
-        SmartDashboard.putNumber("rightRearVelocity_ticksPsec", rightMotors[1].getSelectedSensorVelocity(0)*10);
-
         for (int i = 0; i < leftMotors.length; ++i) 
         {
-            leftCurrent_amp[i] = leftMotors[i].getOutputCurrent();
-            SmartDashboard.putNumber("leftCurrent_amp"+Integer.toString(i), leftCurrent_amp[i]);
-        }
+            String stri = Integer.toString(i);
+            SmartDashboard.putNumber("leftCurrent_amp_"+stri,            leftMotors[i].getOutputCurrent());
+            SmartDashboard.putNumber("leftPosition_ticks_"+stri,         leftMotors[i].getSelectedSensorPosition(0));
+            SmartDashboard.putNumber("leftVelocity_ticksP100ms_"+stri,   leftMotors[i].getSelectedSensorVelocity(0));
+            SmartDashboard.putNumber("leftClosedError_"+stri,            leftMotors[i].getClosedLoopError(0));
+            }
         for (int i = 0; i < rightMotors.length; ++i) 
         {
-            rightCurrent_amp[i] = rightMotors[i].getOutputCurrent();
-            SmartDashboard.putNumber("rightCurrent_amp"+Integer.toString(i), rightCurrent_amp[i]);
+            String stri = Integer.toString(i);
+            SmartDashboard.putNumber("rightCurrent_amp_"+stri,           rightMotors[i].getOutputCurrent());
+            SmartDashboard.putNumber("rightPosition_ticks_"+stri,        rightMotors[i].getSelectedSensorPosition(0));
+            SmartDashboard.putNumber("rightVelocity_ticksP100ms_"+stri,  rightMotors[i].getSelectedSensorVelocity(0));
+            SmartDashboard.putNumber("rightClosedError_"+stri,           rightMotors[i].getClosedLoopError(0));
         }
     }
 

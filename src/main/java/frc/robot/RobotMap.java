@@ -27,4 +27,5 @@ public class RobotMap
 
     final public static FeedbackDevice DRIVE_MOTOR_FEEDBACK_DEVICE = FeedbackDevice.QuadEncoder;
     final public static int DRIVE_MOTOR_FEEDBACK_TICK_PER_REV = 8192;
+    final public static double TICKS_PER_REV_PER_100MS_PER_MIN = RobotMap.DRIVE_MOTOR_FEEDBACK_TICK_PER_REV/600.0;
 };

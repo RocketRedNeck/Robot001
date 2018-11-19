@@ -30,7 +30,7 @@ deploy {
     }
 }
 
-//apply from: 'https://raw.githubusercontent.com/cpostbitbuckets/FRCTutorial/master/buildSrc/simulator.gradle'
+apply from: 'https://raw.githubusercontent.com/cpostbitbuckets/FRCTutorial/master/buildSrc/simulator.gradle'
 
 // Defining my dependencies. In this case, WPILib (+ friends), CTRE Toolsuite (Talon SRX)
 // and NavX.

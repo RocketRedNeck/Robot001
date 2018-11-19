@@ -24,10 +24,7 @@ import frc.robot.drivesubsystem.DriveSubsystem;
 public class Robot extends TimedRobot {
     final public Joystick driverControl = new Joystick(RobotMap.DRIVER_JOYSTICK_ID);
 
-    final public DriveSubsystem driveSubsystem = new DriveSubsystem(RobotMap.DRIVE_MOTOR_LEFT_ID_GROUP,
-                                                                    RobotMap.DRIVE_MOTOR_RIGHT_ID_GROUP, 
-                                                                    RobotMap.DRIVE_MOTOR_FEEDBACK_DEVICE, 
-                                                                    RobotMap.CAN_TIMEOUT_MSEC);
+    final public DriveSubsystem driveSubsystem = new DriveSubsystem();
 
     // TODO: Move auto selection to its own subsystem
     private static final String kDefaultAuto = "Default";
