@@ -21,29 +21,19 @@ import frc.robot.drivesubsystem.DriveSubsystem;
  * creating this project, you must also update the build.gradle file in the
  * project.
  */
-public class Robot extends TimedRobot {
-    final public Joystick driverControl = new Joystick(RobotMap.DRIVER_JOYSTICK_ID);
+public class Robot extends TimedRobot 
+{
 
     final public DriveSubsystem driveSubsystem = new DriveSubsystem();
-
-    // TODO: Move auto selection to its own subsystem
-    private static final String kDefaultAuto = "Default";
-    private static final String kCustomAuto = "My Auto";
-    private String m_autoSelected;
-    private final SendableChooser<String> m_chooser = new SendableChooser<>();
 
     /**
      * This function is run when the robot is first started up and should be used
      * for any initialization code.
      */
     @Override
-    public void robotInit() {
+    public void robotInit() 
+    {
         driveSubsystem.initialize();
-
-        m_chooser.addDefault("Default Auto", kDefaultAuto);
-        m_chooser.addObject("My Auto", kCustomAuto);
-        SmartDashboard.putData("Auto choices", m_chooser);
-
     }
 
     /**
@@ -56,7 +46,8 @@ public class Robot extends TimedRobot {
      * and SmartDashboard integrated updating.
      */
     @Override
-    public void robotPeriodic() {
+    public void robotPeriodic() 
+    {
         driveSubsystem.periodic();
     }
 
@@ -64,7 +55,8 @@ public class Robot extends TimedRobot {
      * disabled init
      */
     @Override
-    public void disabledInit() {
+    public void disabledInit() 
+    {
         // Explicitly disable all subsystems to a known "safe" state
         driveSubsystem.disable();
     }
@@ -73,7 +65,8 @@ public class Robot extends TimedRobot {
      * disabled init
      */
     @Override
-    public void disabledPeriodic() {
+    public void disabledPeriodic() 
+    {
     }
 
     /**
@@ -89,57 +82,48 @@ public class Robot extends TimedRobot {
      * make sure to add them to the chooser code above as well.
      */
     @Override
-    public void autonomousInit() {
-        m_autoSelected = m_chooser.getSelected();
-        // m_autoSelected = SmartDashboard.getString("Auto Selector", kDefaultAuto);
-        System.out.println("Auto selected: " + m_autoSelected);
+    public void autonomousInit() 
+    {
     }
 
     /**
      * This function is called periodically during autonomous.
      */
     @Override
-    public void autonomousPeriodic() {
-        switch (m_autoSelected) {
-        case kCustomAuto:
-            // Put custom auto code here
-            break;
-        case kDefaultAuto:
-        default:
-            // Put default auto code here
-            break;
-        }
+    public void autonomousPeriodic() 
+    {
     }
 
     /**
      * intialization for teleop
      */
     @Override
-    public void teleopInit() {
-
+    public void teleopInit() 
+    {
     }
 
     /**
      * This function is called periodically during operator control.
      */
     @Override
-    public void teleopPeriodic() {
-        driveSubsystem.drive(driverControl);    // TODO: not sure I like this, may want more explicit interfaces see function for more information
+    public void teleopPeriodic() 
+    {
+        driveSubsystem.drive();
     }
 
     /**
      * intialization for test
      */
     @Override
-    public void testInit() {
-
+    public void testInit()
+    {
     }
 
     /**
      * This function is called periodically during test mode.
      */
     @Override
-    public void testPeriodic() {
-
+    public void testPeriodic() 
+    {
     }
 }

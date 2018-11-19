@@ -5,6 +5,7 @@ import com.ctre.phoenix.motorcontrol.FeedbackDevice;
 public class RobotMap
 {
     final public static int DRIVER_JOYSTICK_ID = 0;
+    final public static int OPERATOR_JOYSTICK_ID = 1;
 
     final public static int CAN_TIMEOUT_MSEC = 10;    // Only use this during initialization; use zero for periodic calls
 

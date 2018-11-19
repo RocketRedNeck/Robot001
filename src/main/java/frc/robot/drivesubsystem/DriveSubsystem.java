@@ -7,6 +7,7 @@
 
 package frc.robot.drivesubsystem;
 
+import frc.robot.OI;
 import frc.robot.PS4Constants;
 import frc.robot.RobotMap;
 
@@ -238,9 +239,8 @@ public class DriveSubsystem extends Subsystem {
         // generated once
         SmartDashboard.putData("DriveStyles", driveStyleChooser);
         SmartDashboard.putBoolean("DriveTelemetryEnabled",false);
-        SmartDashboard.putBoolean("TestDriveEnabled",false);
-        SmartDashboard.putNumber("LeftTestSpeed", 0.0);
-        SmartDashboard.putNumber("RightTestSpeed",0.0);
+        SmartDashboard.putBoolean("DriveDiagnosticsEnabled",false);
+        SmartDashboard.putNumber("TestVelocity_rpm",100.0);
 
         // Loop through each motor to configure every setting for deterministic
         // behavior.
@@ -313,15 +313,12 @@ public class DriveSubsystem extends Subsystem {
 
     /**
      * drive - simplified interface to that selects drive type based on driveStyleChoose
-     * @param speed
-     * @param turnOrRightSpeed
      */
-    public void drive(Joystick control)     // TODO: Not sure I like this, may just want separate functions with speed/turn or left/right args
+    public void drive()
     {
-        // TODO: Move to OI as functional interface
-		double speed = control.getRawAxis(PS4Constants.LEFT_STICK_Y.getValue());
-        double turn  = -control.getRawAxis(PS4Constants.RIGHT_STICK_X.getValue());
-        double rightSpeed = control.getRawAxis(PS4Constants.RIGHT_STICK_Y.getValue());
+		double speed = OI.speed();
+        double turn  = OI.turn();
+        double rightSpeed = OI.rightSpeed();
 
         switch (driveStyleChooser.getSelected())
         {
@@ -344,16 +341,16 @@ public class DriveSubsystem extends Subsystem {
             case RIDICULOUS_MODE:
             {
                 leftMotors[0].set(speed);
-                rightMotors[0].set(-speed);
+                rightMotors[0].set(speed);
                 break;
             }
             case TEST_VEL_MODE:
             {
-                if (control.getRawButton(PS4Constants.CIRCLE.getValue()))
+                if (OI.testVelocityMode())
                 {
-                    double rpm = 100.0;
+                    double rpm = SmartDashboard.getNumber("TestVelocity_rpm",100.0);
                     double ticksP100ms = rpm * RobotMap.TICKS_PER_REV_PER_100MS_PER_MIN;
-                    SmartDashboard.putNumber("velocityCommand_ticksP100ms", ticksP100ms);
+                    SmartDashboard.putNumber("TestVelocityCommand_ticksP100ms", ticksP100ms);
 
                     for (int i = 0; i < NUM_MOTORS; ++i)
                     {
@@ -378,17 +375,15 @@ public class DriveSubsystem extends Subsystem {
 
     private void telemetry()
     {
-        for (int i = 0; i < leftMotors.length; ++i) 
+        for (int i = 0; i < NUM_MOTORS; ++i) 
         {
             String stri = Integer.toString(i);
+            
             SmartDashboard.putNumber("leftCurrent_amp_"+stri,            leftMotors[i].getOutputCurrent());
             SmartDashboard.putNumber("leftPosition_ticks_"+stri,         leftMotors[i].getSelectedSensorPosition(0));
             SmartDashboard.putNumber("leftVelocity_ticksP100ms_"+stri,   leftMotors[i].getSelectedSensorVelocity(0));
             SmartDashboard.putNumber("leftClosedError_"+stri,            leftMotors[i].getClosedLoopError(0));
-            }
-        for (int i = 0; i < rightMotors.length; ++i) 
-        {
-            String stri = Integer.toString(i);
+
             SmartDashboard.putNumber("rightCurrent_amp_"+stri,           rightMotors[i].getOutputCurrent());
             SmartDashboard.putNumber("rightPosition_ticks_"+stri,        rightMotors[i].getSelectedSensorPosition(0));
             SmartDashboard.putNumber("rightVelocity_ticksP100ms_"+stri,  rightMotors[i].getSelectedSensorVelocity(0));
