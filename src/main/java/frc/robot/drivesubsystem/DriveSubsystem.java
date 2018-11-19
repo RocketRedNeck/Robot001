@@ -8,8 +8,10 @@
 package frc.robot.drivesubsystem;
 
 import frc.robot.PS4Constants;
+import frc.robot.RobotMap;
 
 import com.ctre.phoenix.motorcontrol.ControlFrame;
+import com.ctre.phoenix.motorcontrol.ControlMode;
 import com.ctre.phoenix.motorcontrol.FeedbackDevice;
 import com.ctre.phoenix.motorcontrol.LimitSwitchNormal;
 import com.ctre.phoenix.motorcontrol.LimitSwitchSource;
@@ -57,6 +59,8 @@ public class DriveSubsystem extends Subsystem {
         WPI_CURVATURE, 
         WPI_TANK, 
         MODIFIED_ARCADE,
+        RIDICULOUS_MODE,
+        TEST_VEL_MODE,
     };
 
     private SendableChooser<DriveStyles> driveStyleChooser;
@@ -74,6 +78,8 @@ public class DriveSubsystem extends Subsystem {
         driveStyleChooser.addObject( "WPI Curvature",   DriveStyles.WPI_CURVATURE);
         driveStyleChooser.addObject( "WPI Tank",        DriveStyles.WPI_TANK);
         driveStyleChooser.addObject( "Modified Arcade", DriveStyles.MODIFIED_ARCADE);
+        driveStyleChooser.addObject( "Ridiculous Mode", DriveStyles.RIDICULOUS_MODE);
+        driveStyleChooser.addObject( "Test Vel Mode",   DriveStyles.TEST_VEL_MODE);
 
         // Configure motors at initialiation
         leftMotors = new WPI_TalonSRX[leftIds.length];
@@ -120,10 +126,10 @@ public class DriveSubsystem extends Subsystem {
         for (int slotIdx = 0; slotIdx < 2; ++slotIdx)   // TODO: Source MAGIC NUMBER 2, what is the actual number of slots in the firmware?
         {
             aMotor.config_IntegralZone(slotIdx, 0, CAN_TIMEOUT_MSEC);
-            aMotor.config_kD(slotIdx, 0.0, CAN_TIMEOUT_MSEC);
             aMotor.config_kF(slotIdx, 0.0, CAN_TIMEOUT_MSEC);
-            aMotor.config_kI(slotIdx, 0.0, CAN_TIMEOUT_MSEC);
             aMotor.config_kP(slotIdx, 0.0, CAN_TIMEOUT_MSEC);
+            aMotor.config_kI(slotIdx, 0.0, CAN_TIMEOUT_MSEC);
+            aMotor.config_kD(slotIdx, 0.0, CAN_TIMEOUT_MSEC);
             aMotor.configClosedLoopPeakOutput(slotIdx, 1.0, CAN_TIMEOUT_MSEC);
             aMotor.configClosedLoopPeriod(slotIdx, 1, CAN_TIMEOUT_MSEC);
             aMotor.configMaxIntegralAccumulator(slotIdx, 0, CAN_TIMEOUT_MSEC);
@@ -291,6 +297,23 @@ public class DriveSubsystem extends Subsystem {
             }            
         }
         leftMotors[0].setSensorPhase(true);
+        leftMotors[1].setSensorPhase(true);
+
+        rightMotors[0].setSensorPhase(false);
+        rightMotors[1].setSensorPhase(false);
+
+        leftMotors[0].config_kF(0, 0.07764705882, CAN_TIMEOUT_MSEC);
+        //leftMotors[0].config_kP(0, 0.0525, CAN_TIMEOUT_MSEC);
+
+        leftMotors[1].config_kF(0, 0.09007660474, CAN_TIMEOUT_MSEC);
+        //leftMotors[1].config_kP(0, 0.0445, CAN_TIMEOUT_MSEC);
+
+        
+        rightMotors[0].config_kF(0, 0.09305075496, CAN_TIMEOUT_MSEC);
+        rightMotors[0].config_kP(0, 0.1411, CAN_TIMEOUT_MSEC);
+
+        rightMotors[1].config_kF(0, 0.08079930495, CAN_TIMEOUT_MSEC);
+        rightMotors[1].config_kP(0, 0.2728/2, CAN_TIMEOUT_MSEC);
 
         disable();
     }
@@ -343,6 +366,38 @@ public class DriveSubsystem extends Subsystem {
             {
                 break;
             }
+            case RIDICULOUS_MODE:
+            {
+                leftMotors[0].set(speed);
+                rightMotors[0].set(-speed);
+                break;
+            }
+            case TEST_VEL_MODE:
+            {
+                if (control.getRawButton(PS4Constants.CIRCLE.getValue()))
+                {
+                    double RPM = 100.0;
+                    double TICKS_PER_REV_PER_100MS_PER_MIN = RobotMap.DRIVE_MOTOR_FEEDBACK_TICK_PER_REV/600.0;
+                    double DISPLAY_SCALE = 1.0;// TICKS_PER_REV_PER_100MS_PER_MIN;
+
+                    leftMotors[0].set(ControlMode.Velocity,   RPM * TICKS_PER_REV_PER_100MS_PER_MIN);
+                    leftMotors[1].set(ControlMode.Velocity,   RPM * TICKS_PER_REV_PER_100MS_PER_MIN);
+                    rightMotors[0].set(ControlMode.Velocity, -RPM * TICKS_PER_REV_PER_100MS_PER_MIN);
+                    rightMotors[1].set(ControlMode.Velocity, -RPM * TICKS_PER_REV_PER_100MS_PER_MIN);
+
+                    SmartDashboard.putNumber("LeftVelocityError 0",  DISPLAY_SCALE * leftMotors[0].getClosedLoopError(0));
+                    SmartDashboard.putNumber("LeftVelocityError 1", DISPLAY_SCALE * leftMotors[1].getClosedLoopError(0));
+                    SmartDashboard.putNumber("RightVelocityError 0", DISPLAY_SCALE * rightMotors[0].getClosedLoopError(0));
+                    SmartDashboard.putNumber("RightVelocityError 1", DISPLAY_SCALE * rightMotors[1].getClosedLoopError(0));
+
+                }
+                else
+                {
+                    leftMotors[1].follow(leftMotors[0]);
+                    rightMotors[1].follow(rightMotors[0]);
+                }
+                break;
+            }
         }
     }
 
@@ -382,13 +437,6 @@ public class DriveSubsystem extends Subsystem {
         if (SmartDashboard.getBoolean("DriveTelemetryEnabled",false))
         {
             telemetry();
-        }
-        if (SmartDashboard.getBoolean("TestDriveEnabled",false))
-        {
-            double leftSpeed = SmartDashboard.getNumber("LeftTestSpeed", 0.0);
-            double rightSpeed = SmartDashboard.getNumber("RightTestSpeed",0.0);
-            leftMotors[0].set(leftSpeed);
-            rightMotors[0].set(rightSpeed);
         }
     }
 }
