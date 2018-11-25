@@ -418,7 +418,6 @@ public class DriveSubsystem extends Subsystem {
             {
                 if (OI.testButton())
                 {
-                    System.out.println("Open Loop Sample...");
                     // Set all motors to full speed
                     // Keep sampling until user stops pressing button
                     if (timeOfSampleStart_sec == 0.0)
@@ -428,7 +427,6 @@ public class DriveSubsystem extends Subsystem {
                         timeOfSampleStart_sec = Timer.getFPGATimestamp();
                         velSampleIndex = 0;
                         numVelSamples = 0;
-                        System.out.println("Open Loop Sample Triggered...");
                     }
                     for (int i = 0; i < NUM_MOTORS; ++i)
                     {
