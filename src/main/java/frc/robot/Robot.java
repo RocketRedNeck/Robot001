@@ -27,6 +27,14 @@ public class Robot extends TimedRobot
     final public DriveSubsystem driveSubsystem = new DriveSubsystem();
 
     /**
+     * We add a constructor so we have an option of changing the timed period
+     */    
+    public Robot()
+    {
+        super(RobotMap.ROBOT_PERIOD_SEC);
+    }
+
+    /**
      * This function is run when the robot is first started up and should be used
      * for any initialization code.
      */

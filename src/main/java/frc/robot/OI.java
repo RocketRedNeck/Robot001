@@ -30,7 +30,7 @@ public class OI
         return -driverControl.getRawAxis(DRIVE_TURN_AXIS);
     }
 
-    public static boolean testVelocityMode()
+    public static boolean testButton()
     {
         return driverControl.getRawButton(TEST_VELOCITY_MODE_BUTTON);
     }

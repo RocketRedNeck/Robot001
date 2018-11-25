@@ -8,6 +8,7 @@ def ROBOT_CLASS = "frc.robot.Robot"
 repositories {
     maven { url "https://maven.atlassian.com/3rdparty/" }
     maven { url "http://repo.maven.apache.org/maven2" }
+    maven { url "https://mvnrepository.com/artifact/org.apache.commons/commons-math3"}
 }
 // Define my targets (RoboRIO) and artifacts (deployable files)
 // This is added by GradleRIO's backing project EmbeddedTools.
@@ -40,6 +41,7 @@ dependencies {
     compile navx()
     compile pathfinder()
     compile 'org.scream3r:jssc:2.8.0'
+    compile group: 'org.apache.commons', name: 'commons-math3', version: '3.0'
 }
 
 // Setting up my Jar File. In this case, adding all libraries into the main jar ('fat jar')

@@ -9,6 +9,7 @@ package frc.robot.drivesubsystem;
 
 import frc.robot.OI;
 import frc.robot.PS4Constants;
+import frc.robot.Robot;
 import frc.robot.RobotMap;
 
 import com.ctre.phoenix.motorcontrol.ControlFrame;
@@ -23,11 +24,14 @@ import com.ctre.phoenix.motorcontrol.can.WPI_TalonSRX;
 import com.ctre.phoenix.ErrorCode;
 
 import edu.wpi.first.wpilibj.Joystick;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.GenericHID.Hand;
 import edu.wpi.first.wpilibj.command.Subsystem;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+
+import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 
 /**
  * Add your docs here.
@@ -40,6 +44,17 @@ public class DriveSubsystem extends Subsystem {
     private WPI_TalonSRX[] rightMotors;
 
     private final int NUM_MOTORS;
+    private boolean followModeEnabled = false;
+
+    private double timeOfSampleStart_sec;
+    private int velSampleIndex;
+    private int numVelSamples;
+    private int[][] leftVelocitySamples_ticksP100ms;
+    private int[][] rightVelocitySamples_ticksP100ms;
+
+    private final int NUM_VELOCITY_SAMPLES;
+
+    private DescriptiveStatistics descriptiveStatistics;
 
     private DifferentialDrive drive;
 
@@ -48,7 +63,7 @@ public class DriveSubsystem extends Subsystem {
         WPI_ARCADE, 
         WPI_CURVATURE, 
         WPI_TANK, 
-        RIDICULOUS_MODE,
+        OPEN_LOOP_SAMPLE,
         TEST_VEL_MODE,
     };
 
@@ -66,12 +81,19 @@ public class DriveSubsystem extends Subsystem {
         driveStyleChooser.setDefaultOption("WPI Arcade",    DriveStyles.WPI_ARCADE);
         driveStyleChooser.addOption( "WPI Curvature",       DriveStyles.WPI_CURVATURE);
         driveStyleChooser.addOption( "WPI Tank",            DriveStyles.WPI_TANK);
-        driveStyleChooser.addOption( "Ridiculous Mode",     DriveStyles.RIDICULOUS_MODE);
+        driveStyleChooser.addOption( "Open Loop Sample",    DriveStyles.OPEN_LOOP_SAMPLE);
         driveStyleChooser.addOption( "Test Vel Mode",       DriveStyles.TEST_VEL_MODE);
         
         // Configure motors at initialiation
-        leftMotors = new WPI_TalonSRX[NUM_MOTORS];
+        leftMotors  = new WPI_TalonSRX[NUM_MOTORS];
         rightMotors = new WPI_TalonSRX[NUM_MOTORS];
+
+        NUM_VELOCITY_SAMPLES = (int)(3.0 * RobotMap.ROBOT_RATE_HZ);
+        leftVelocitySamples_ticksP100ms  = new int[NUM_MOTORS][NUM_VELOCITY_SAMPLES];
+        rightVelocitySamples_ticksP100ms = new int[NUM_MOTORS][NUM_VELOCITY_SAMPLES];
+        timeOfSampleStart_sec = 0.0;
+
+        descriptiveStatistics = new DescriptiveStatistics();
 
         for (int i = 0; i < NUM_MOTORS; ++i) 
         {
@@ -96,7 +118,7 @@ public class DriveSubsystem extends Subsystem {
      * 
      * TODO: Move this to a separate package?
      */
-    private void initializeMotor(WPI_TalonSRX aMotor)
+    private void initializeMotorDefaults(WPI_TalonSRX aMotor)
     {
         // TODO: Check ErrorCode?
 
@@ -179,21 +201,21 @@ public class DriveSubsystem extends Subsystem {
 
         aMotor.setNeutralMode(NeutralMode.Brake);
 
-        // aMotor.setSafetyEnabled(false);
-        // aMotor.setExpiration(0.500);
+        aMotor.setSafetyEnabled(false);
+        aMotor.setExpiration(0.500);
 
         aMotor.setInverted(false);
         aMotor.setSensorPhase(false);
 
         // Reinforce the factory defaults that we might change later
-        // TODO: To improve CAN bus utilization consider setting the unused one to even lower rates (longer periods)
-        // aMotor.setStatusFramePeriod(StatusFrameEnhanced.Status_1_General,        10, RobotMap.CAN_TIMEOUT_MSEC);
-        // aMotor.setStatusFramePeriod(StatusFrameEnhanced.Status_2_Feedback0,      20, RobotMap.CAN_TIMEOUT_MSEC);
-        // aMotor.setStatusFramePeriod(StatusFrameEnhanced.Status_3_Quadrature,    160, RobotMap.CAN_TIMEOUT_MSEC);
-        // aMotor.setStatusFramePeriod(StatusFrameEnhanced.Status_4_AinTempVbat,   160, RobotMap.CAN_TIMEOUT_MSEC);
-        // aMotor.setStatusFramePeriod(StatusFrameEnhanced.Status_8_PulseWidth,    160, RobotMap.CAN_TIMEOUT_MSEC);
-        // aMotor.setStatusFramePeriod(StatusFrameEnhanced.Status_10_MotionMagic,  160, RobotMap.CAN_TIMEOUT_MSEC);
-        // aMotor.setStatusFramePeriod(StatusFrameEnhanced.Status_13_Base_PIDF0,   160, RobotMap.CAN_TIMEOUT_MSEC);
+        // To improve CAN bus utilization consider setting the unused one to even lower rates (longer periods)
+        aMotor.setStatusFramePeriod(StatusFrameEnhanced.Status_1_General,        10, RobotMap.CAN_TIMEOUT_MSEC);
+        aMotor.setStatusFramePeriod(StatusFrameEnhanced.Status_2_Feedback0,      20, RobotMap.CAN_TIMEOUT_MSEC);
+        aMotor.setStatusFramePeriod(StatusFrameEnhanced.Status_3_Quadrature,    160, RobotMap.CAN_TIMEOUT_MSEC);
+        aMotor.setStatusFramePeriod(StatusFrameEnhanced.Status_4_AinTempVbat,   160, RobotMap.CAN_TIMEOUT_MSEC);
+        aMotor.setStatusFramePeriod(StatusFrameEnhanced.Status_8_PulseWidth,    160, RobotMap.CAN_TIMEOUT_MSEC);
+        aMotor.setStatusFramePeriod(StatusFrameEnhanced.Status_10_MotionMagic,  160, RobotMap.CAN_TIMEOUT_MSEC);
+        aMotor.setStatusFramePeriod(StatusFrameEnhanced.Status_13_Base_PIDF0,   160, RobotMap.CAN_TIMEOUT_MSEC);
 
         // aMotor.selectDemandType(false);   // Future feature
 
@@ -251,25 +273,42 @@ public class DriveSubsystem extends Subsystem {
         // of the flash memory
         for (int i = 0; i < NUM_MOTORS; ++i)
         {
-            initializeMotor(leftMotors[i]);
-            leftMotors[i].setInverted(true);        // TODO: Robot Map
-
-            initializeMotor(rightMotors[i]);
-            rightMotors[i].setInverted(false);      // TODO: Robot Map      
+            initializeMotorDefaults(leftMotors[i]);
+            initializeMotorDefaults(rightMotors[i]);    
         }
 
-        // Configure primary motor sensor device for all feedback loops
-        for (int pidIndex = 0; pidIndex <= 0; ++pidIndex)
+        // Configure the motors for this robot drive subsystem
+        // NOTE: If the number of controllers is > 1 then some things will be set
+        // up more than once; minor impact to performance and flash longevity
+        for (int pidIndex = 0; pidIndex < RobotMap.NUM_CONTROLLER_FEEDBACK_LOOPS; ++pidIndex)
         {
             for (int i = 0; i < NUM_MOTORS; ++i)
             {
-                leftMotors[i].configSelectedFeedbackSensor(RobotMap.DRIVE_MOTOR_FEEDBACK_DEVICE, pidIndex, RobotMap.CAN_TIMEOUT_MSEC);
-                leftMotors[i].setSelectedSensorPosition(0, pidIndex, RobotMap.CAN_TIMEOUT_MSEC);
-                leftMotors[i].setSensorPhase(true); /// TODO: Robot Map
+                // LEFT MOTORS get the left motor constants
+                leftMotors[i].setInverted(RobotMap.DRIVE_LEFT_MOTOR_INVERSION);
+                leftMotors[i].configSelectedFeedbackSensor(RobotMap.DRIVE_MOTOR_FEEDBACK_DEVICE, 
+                                                           pidIndex, 
+                                                           RobotMap.CAN_TIMEOUT_MSEC);
+                leftMotors[i].setSelectedSensorPosition(0,
+                                                        pidIndex, 
+                                                        RobotMap.CAN_TIMEOUT_MSEC);
+                leftMotors[i].setSensorPhase(RobotMap.DRIVE_LEFT_SENSOR_PHASE);
+                leftMotors[i].setStatusFramePeriod(StatusFrameEnhanced.Status_3_Quadrature,    
+                                                   RobotMap.DRIVE_QUADRATURE_STATUS_FRAME_PERIOD_MSEC, 
+                                                   RobotMap.CAN_TIMEOUT_MSEC);
 
-                rightMotors[i].configSelectedFeedbackSensor(RobotMap.DRIVE_MOTOR_FEEDBACK_DEVICE, pidIndex, RobotMap.CAN_TIMEOUT_MSEC);
-                rightMotors[i].setSelectedSensorPosition(0, pidIndex, RobotMap.CAN_TIMEOUT_MSEC);
-                rightMotors[i].setSensorPhase(false);   /// TODO: Robot Map
+                // RIGHT MOTORS get the right motor constants
+                rightMotors[i].setInverted(RobotMap.DRIVE_RIGHT_MOTOR_INVERSION); 
+                rightMotors[i].configSelectedFeedbackSensor(RobotMap.DRIVE_MOTOR_FEEDBACK_DEVICE, 
+                                                            pidIndex, 
+                                                            RobotMap.CAN_TIMEOUT_MSEC);
+                rightMotors[i].setSelectedSensorPosition(0, 
+                                                         pidIndex, 
+                                                         RobotMap.CAN_TIMEOUT_MSEC);
+                rightMotors[i].setSensorPhase(RobotMap.DRIVE_RIGHT_SENSOR_PHASE);
+                rightMotors[i].setStatusFramePeriod(StatusFrameEnhanced.Status_3_Quadrature,    
+                                                    RobotMap.DRIVE_QUADRATURE_STATUS_FRAME_PERIOD_MSEC, 
+                                                    RobotMap.CAN_TIMEOUT_MSEC);
             }
         }
 
@@ -288,11 +327,8 @@ public class DriveSubsystem extends Subsystem {
 
         // Set up follower commands only once to minimize CAN traffic
         // when not in closed loop control
-        for (int i = 1; i < NUM_MOTORS; ++i) 
-        {
-            leftMotors[i].follow(leftMotors[0]);
-            rightMotors[i].follow(rightMotors[0]);
-        }
+        enableFollowMode();
+
         disable();
     }
 
@@ -302,6 +338,38 @@ public class DriveSubsystem extends Subsystem {
     public void disable() 
     {
         drive.stopMotor();
+    }
+
+    /**
+     * enableFollowMode - enables following modes if not already enabled
+     */
+    private void enableFollowMode()
+    {
+        if (!followModeEnabled)
+        {
+            for (int i = 1; i < NUM_MOTORS; ++i)
+            {
+                leftMotors[i].follow(leftMotors[0]);
+                rightMotors[i].follow(rightMotors[0]);
+            }
+            followModeEnabled = true;  
+        }       
+    }
+
+    /**
+     * disableFollowMode - disables following modes if not already disabled
+     */
+    private void disableFollowMode()
+    {
+        if (followModeEnabled)
+        {
+            for (int i = 1; i < NUM_MOTORS; ++i)
+            {
+                leftMotors[i].set(0.0);
+                rightMotors[i].set(0.0);
+            }
+            followModeEnabled = false;
+        }
     }
 
     @Override
@@ -325,31 +393,123 @@ public class DriveSubsystem extends Subsystem {
             default:
             case WPI_ARCADE:
             {
-                drive.arcadeDrive(0.4*speed, 0.2*turn, false); // Don't square yet, will work on scaler later as new Joystick type
+                enableFollowMode();
+                drive.arcadeDrive(RobotMap.DRIVE_SPEED_LIMIT_FACTOR*speed, 
+                                  RobotMap.DRIVE_TURN_LIMIT_FACTOR*turn, 
+                                  false); // Don't square yet, will work on scaler later as new Joystick type
                 break;
             }
             case WPI_CURVATURE:
             {
-                drive.curvatureDrive(0.4*speed, 0.2*turn, Math.abs(speed)<0.25); // Use quickturn logic when speed is "low"
+                enableFollowMode();
+                drive.curvatureDrive(RobotMap.DRIVE_SPEED_LIMIT_FACTOR*speed, 
+                                     RobotMap.DRIVE_TURN_LIMIT_FACTOR*turn, 
+                                     Math.abs(turn)>0.8); // Use quickturn logic when user cranks it over
                 break;
             }
             case WPI_TANK:
             {
-                drive.tankDrive(0.6*speed, 0.6*rightSpeed);
+                enableFollowMode();
+                drive.tankDrive(RobotMap.DRIVE_TANK_LIMIT_FACTOR*speed, 
+                                RobotMap.DRIVE_TANK_LIMIT_FACTOR*rightSpeed);
                 break;
             }
-            case RIDICULOUS_MODE:
+            case OPEN_LOOP_SAMPLE:
             {
-                leftMotors[0].set(speed);
-                rightMotors[0].set(speed);
+                if (OI.testButton())
+                {
+                    // Set all motors to full speed
+                    // Keep sampling until user stops pressing button
+                    if (timeOfSampleStart_sec == 0.0)
+                    {
+                        // Initialize time to track when sampling should
+                        // really begin and end
+                        timeOfSampleStart_sec = Timer.getFPGATimestamp();
+                        velSampleIndex = 0;
+                        numVelSamples = 0;
+                    }
+                    for (int i = 0; i < NUM_MOTORS; ++i)
+                    {
+                        leftMotors[i].set(1.0);
+                        rightMotors[i].set(1.0);
+                    }
+
+                    // Wait one second before starting to sample
+                    if (Timer.getFPGATimestamp() > (timeOfSampleStart_sec + 1.0))
+                    {
+                        for (int i = 0; i < NUM_MOTORS; ++i)
+                        {
+                            leftVelocitySamples_ticksP100ms[i][velSampleIndex] = leftMotors[i].getSelectedSensorVelocity(0);
+                            rightVelocitySamples_ticksP100ms[i][velSampleIndex] = rightMotors[i].getSelectedSensorVelocity(0);
+                            if (numVelSamples <= NUM_VELOCITY_SAMPLES)
+                            {
+                                ++numVelSamples;
+                            }
+                        }
+                        // Just override the last sample if we have enough samples
+                        if (velSampleIndex <= NUM_VELOCITY_SAMPLES-1)
+                        {
+                            velSampleIndex += 1;
+                        }
+                    }
+
+
+                }
+                else
+                {
+                    timeOfSampleStart_sec = 0.0;
+                    if (numVelSamples >= 100)
+                    {
+                        // We have enough samples to make an estimate
+
+                        for (int i = 0; i < NUM_MOTORS; ++i)
+                        {
+                            String stri = Integer.toString(i);
+
+                            // Add the data from the left array
+                            descriptiveStatistics.clear();
+                            for( int j = 0; j < numVelSamples; ++j) 
+                            {
+                                descriptiveStatistics.addValue(leftVelocitySamples_ticksP100ms[0][i]);
+                            }
+
+                            // Compute some statistics
+                            SmartDashboard.putNumber("leftMeanVelocity_tickP100ms_"+stri, descriptiveStatistics.getMean());
+                            SmartDashboard.putNumber("leftStdVelocity_tickP100ms_"+stri, descriptiveStatistics.getStandardDeviation());
+                            SmartDashboard.putNumber("leftMedianVelocity_tickP100ms_"+stri, descriptiveStatistics.getPercentile(50));
+
+                            // Add the data from the left array
+                            descriptiveStatistics.clear();
+                            for( int j = 0; j < numVelSamples; ++j) 
+                            {
+                                descriptiveStatistics.addValue(rightVelocitySamples_ticksP100ms[0][i]);
+                            }
+
+                            // Compute some statistics
+                            SmartDashboard.putNumber("rightMeanVelocity_tickP100ms_"+stri, descriptiveStatistics.getMean());
+                            SmartDashboard.putNumber("rightStdVelocity_tickP100ms_"+stri, descriptiveStatistics.getStandardDeviation());
+                            SmartDashboard.putNumber("rightMedianVelocity_tickP100ms_"+stri, descriptiveStatistics.getPercentile(50));
+
+                        }                        
+                    }
+                    enableFollowMode();
+                    for (int i = 1; i < NUM_MOTORS; ++i)
+                    {
+                        leftMotors[i].follow(leftMotors[0]);
+                        rightMotors[i].follow(rightMotors[0]);
+                    }                    
+                    leftMotors[0].set(speed);
+                    rightMotors[0].set(speed);
+                }
                 break;
             }
             case TEST_VEL_MODE:
             {
-                if (OI.testVelocityMode())
+                if (OI.testButton())
                 {
+                    disableFollowMode();
                     double rpm = SmartDashboard.getNumber("TestVelocity_rpm",100.0);
-                    double ticksP100ms = rpm * RobotMap.TICKS_PER_REV_PER_100MS_PER_MIN;
+                    double ticksP100ms = RobotMap.driveRpmToTicks(rpm);
                     SmartDashboard.putNumber("TestVelocityCommand_ticksP100ms", ticksP100ms);
 
                     for (int i = 0; i < NUM_MOTORS; ++i)
@@ -360,13 +520,8 @@ public class DriveSubsystem extends Subsystem {
                 }
                 else
                 {
-                    // Force follower when exiting the control
-                    // TODO: Consider a more robust or encapsulated way of doing this
-                    for (int i = 1; i < NUM_MOTORS; ++i) 
-                    {
-                        leftMotors[i].follow(leftMotors[0]);
-                        rightMotors[i].follow(rightMotors[0]);
-                    }
+                    enableFollowMode();
+                    drive.stopMotor();
                 }
                 break;
             }
@@ -378,7 +533,7 @@ public class DriveSubsystem extends Subsystem {
         for (int i = 0; i < NUM_MOTORS; ++i) 
         {
             String stri = Integer.toString(i);
-            
+
             SmartDashboard.putNumber("leftCurrent_amp_"+stri,            leftMotors[i].getOutputCurrent());
             SmartDashboard.putNumber("leftPosition_ticks_"+stri,         leftMotors[i].getSelectedSensorPosition(0));
             SmartDashboard.putNumber("leftVelocity_ticksP100ms_"+stri,   leftMotors[i].getSelectedSensorVelocity(0));
