@@ -64,7 +64,9 @@ public class DriveSubsystem extends Subsystem {
         WPI_CURVATURE, 
         WPI_TANK, 
         OPEN_LOOP_SAMPLE,
-        TEST_VEL_MODE,
+        TEST_VELOCITY_MODE,
+        TEST_POSITION_MODE,
+        TEST_MOTION_MODE
     };
 
     private SendableChooser<DriveStyles> driveStyleChooser;
@@ -78,11 +80,11 @@ public class DriveSubsystem extends Subsystem {
         NUM_MOTORS = RobotMap.DRIVE_MOTOR_LEFT_ID_GROUP.length;
 
         driveStyleChooser = new SendableChooser<DriveStyles>(); // put this on the dashboard at initialization
-        driveStyleChooser.setDefaultOption("WPI Arcade",    DriveStyles.WPI_ARCADE);
-        driveStyleChooser.addOption( "WPI Curvature",       DriveStyles.WPI_CURVATURE);
-        driveStyleChooser.addOption( "WPI Tank",            DriveStyles.WPI_TANK);
-        driveStyleChooser.addOption( "Open Loop Sample",    DriveStyles.OPEN_LOOP_SAMPLE);
-        driveStyleChooser.addOption( "Test Vel Mode",       DriveStyles.TEST_VEL_MODE);
+        driveStyleChooser.addDefault("WPI Arcade",    DriveStyles.WPI_ARCADE);
+        driveStyleChooser.addObject( "WPI Curvature",       DriveStyles.WPI_CURVATURE);
+        driveStyleChooser.addObject( "WPI Tank",            DriveStyles.WPI_TANK);
+        driveStyleChooser.addObject( "Open Loop Sample",    DriveStyles.OPEN_LOOP_SAMPLE);
+        driveStyleChooser.addObject( "Test Velocity Mode",  DriveStyles.TEST_VELOCITY_MODE);
         
         // Configure motors at initialiation
         leftMotors  = new WPI_TalonSRX[NUM_MOTORS];
@@ -252,6 +254,8 @@ public class DriveSubsystem extends Subsystem {
         // within the motor controller instances so we can keep
         // the polarity and sensor phase sensible for all operating
         // modes
+        //
+        // TODO: This function does not exist in older versions of the library
         drive.setRightSideInverted(false);
 
         // Set up all of the initial smartdashboard items in one place so they are
@@ -384,147 +388,175 @@ public class DriveSubsystem extends Subsystem {
      */
     public void drive()
     {
-		double speed = OI.speed();
-        double turn  = OI.turn();
-        double rightSpeed = OI.rightSpeed();
-
         switch (driveStyleChooser.getSelected())
         {
             default:
             case WPI_ARCADE:
             {
-                enableFollowMode();
-                drive.arcadeDrive(RobotMap.DRIVE_SPEED_LIMIT_FACTOR*speed, 
-                                  RobotMap.DRIVE_TURN_LIMIT_FACTOR*turn, 
-                                  false); // Don't square yet, will work on scaler later as new Joystick type
+                arcadeDrive();
                 break;
             }
             case WPI_CURVATURE:
             {
-                enableFollowMode();
-                drive.curvatureDrive(RobotMap.DRIVE_SPEED_LIMIT_FACTOR*speed, 
-                                     RobotMap.DRIVE_TURN_LIMIT_FACTOR*turn, 
-                                     Math.abs(turn)>0.8); // Use quickturn logic when user cranks it over
+                curvatureDrive();
                 break;
             }
             case WPI_TANK:
             {
-                enableFollowMode();
-                drive.tankDrive(RobotMap.DRIVE_TANK_LIMIT_FACTOR*speed, 
-                                RobotMap.DRIVE_TANK_LIMIT_FACTOR*rightSpeed);
+                tankDrive();
                 break;
             }
             case OPEN_LOOP_SAMPLE:
             {
-                if (OI.testButton())
-                {
-                    // Set all motors to full speed
-                    // Keep sampling until user stops pressing button
-                    if (timeOfSampleStart_sec == 0.0)
-                    {
-                        // Initialize time to track when sampling should
-                        // really begin and end
-                        timeOfSampleStart_sec = Timer.getFPGATimestamp();
-                        velSampleIndex = 0;
-                        numVelSamples = 0;
-                    }
-                    for (int i = 0; i < NUM_MOTORS; ++i)
-                    {
-                        leftMotors[i].set(1.0);
-                        rightMotors[i].set(1.0);
-                    }
-
-                    // Wait one second before starting to sample
-                    if (Timer.getFPGATimestamp() > (timeOfSampleStart_sec + 1.0))
-                    {
-                        for (int i = 0; i < NUM_MOTORS; ++i)
-                        {
-                            leftVelocitySamples_ticksP100ms[i][velSampleIndex] = leftMotors[i].getSelectedSensorVelocity(0);
-                            rightVelocitySamples_ticksP100ms[i][velSampleIndex] = rightMotors[i].getSelectedSensorVelocity(0);
-                            if (numVelSamples < NUM_VELOCITY_SAMPLES)
-                            {
-                                ++numVelSamples;
-                            }
-                        }
-                        // Just override the last sample if we have enough samples
-                        if (velSampleIndex < NUM_VELOCITY_SAMPLES-1)
-                        {
-                            velSampleIndex += 1;
-                        }
-                        else
-                        {
-                            velSampleIndex = 0;
-                        }
-                    }
-
-
-                }
-                else
-                {
-                    timeOfSampleStart_sec = 0.0;
-                    if (numVelSamples >= 100)
-                    {
-                        // We have enough samples to make an estimate
-                        SmartDashboard.putNumber("velocitySamples", numVelSamples);
-                        for (int i = 0; i < NUM_MOTORS; ++i)
-                        {
-                            String stri = Integer.toString(i);
-
-                            // Add the data from the left array
-                            descriptiveStatistics.clear();
-                            for( int j = 0; j < numVelSamples; ++j) 
-                            {
-                                descriptiveStatistics.addValue(leftVelocitySamples_ticksP100ms[0][i]);
-                            }
-
-                            // Compute some statistics
-                            SmartDashboard.putNumber("leftMeanVelocity_tickP100ms_"+stri, descriptiveStatistics.getMean());
-                            SmartDashboard.putNumber("leftStdVelocity_tickP100ms_"+stri, descriptiveStatistics.getStandardDeviation());
-                            SmartDashboard.putNumber("leftMedianVelocity_tickP100ms_"+stri, descriptiveStatistics.getPercentile(50));
-
-                            // Add the data from the left array
-                            descriptiveStatistics.clear();
-                            for( int j = 0; j < numVelSamples; ++j) 
-                            {
-                                descriptiveStatistics.addValue(rightVelocitySamples_ticksP100ms[0][i]);
-                            }
-
-                            // Compute some statistics
-                            SmartDashboard.putNumber("rightMeanVelocity_tickP100ms_"+stri, descriptiveStatistics.getMean());
-                            SmartDashboard.putNumber("rightStdVelocity_tickP100ms_"+stri, descriptiveStatistics.getStandardDeviation());
-                            SmartDashboard.putNumber("rightMedianVelocity_tickP100ms_"+stri, descriptiveStatistics.getPercentile(50));
-
-                        }
-                        numVelSamples = 0;                        
-                    }
-                    enableFollowMode();
-                    drive.stopMotor();
-                }
+                driveOpenLoop();
                 break;
             }
-            case TEST_VEL_MODE:
+            case TEST_VELOCITY_MODE:
             {
-                if (OI.testButton())
-                {
-                    disableFollowMode();
-                    double rpm = SmartDashboard.getNumber("TestVelocity_rpm",100.0);
-                    double ticksP100ms = RobotMap.driveRpmToTicks(rpm);
-                    SmartDashboard.putNumber("TestVelocityCommand_ticksP100ms", ticksP100ms);
-
-                    for (int i = 0; i < NUM_MOTORS; ++i)
-                    {
-                        leftMotors[i].set(ControlMode.Velocity,   ticksP100ms);
-                        rightMotors[i].set(ControlMode.Velocity,  ticksP100ms);
-                    }
-                }
-                else
-                {
-                    enableFollowMode();
-                    drive.stopMotor();
-                }
+                testVelocityMode();
                 break;
             }
         }
+    }
+
+    private void tankDrive()
+    {
+        double leftSpeed = OI.speed();
+        double rightSpeed = OI.rightSpeed();
+
+        enableFollowMode();
+        drive.tankDrive(RobotMap.DRIVE_TANK_LIMIT_FACTOR*leftSpeed, 
+                        RobotMap.DRIVE_TANK_LIMIT_FACTOR*rightSpeed);
+    }  
+
+    private void curvatureDrive() 
+    {
+		double speed = OI.speed();
+        double turn  = OI.turn();
+
+        enableFollowMode();
+        drive.curvatureDrive(RobotMap.DRIVE_SPEED_LIMIT_FACTOR*speed, 
+                             RobotMap.DRIVE_TURN_LIMIT_FACTOR*turn, 
+                             Math.abs(turn)>0.8); // Use quickturn logic when user cranks it over
+
+    }
+
+    private void arcadeDrive() 
+    {
+		double speed = OI.speed();
+        double turn  = OI.turn();
+        
+        enableFollowMode();
+        drive.arcadeDrive(RobotMap.DRIVE_SPEED_LIMIT_FACTOR*speed, 
+                          RobotMap.DRIVE_TURN_LIMIT_FACTOR*turn, 
+                          false); // Don't square yet, will work on scaler later as new Joystick type
+    }
+
+    private void testVelocityMode() 
+    {
+        if (OI.testButton())
+        {
+            disableFollowMode();
+            double rpm = SmartDashboard.getNumber("TestVelocity_rpm",100.0);
+            double ticksP100ms = RobotMap.driveRpmToTicks(rpm);
+            SmartDashboard.putNumber("TestVelocityCommand_ticksP100ms", ticksP100ms);
+
+            for (int i = 0; i < NUM_MOTORS; ++i)
+            {
+                leftMotors[i].set(ControlMode.Velocity,   ticksP100ms);
+                rightMotors[i].set(ControlMode.Velocity,  ticksP100ms);
+            }
+        }
+        else
+        {
+            enableFollowMode();
+            drive.stopMotor();
+        }
+    }
+
+    private void driveOpenLoop() 
+    {
+        if (OI.testButton())
+        {
+            // Set all motors to full speed
+            // Keep sampling until user stops pressing button
+            if (timeOfSampleStart_sec == 0.0)
+            {
+                // Initialize time to track when sampling should
+                // really begin and end
+                timeOfSampleStart_sec = Timer.getFPGATimestamp();
+                velSampleIndex = 0;
+                numVelSamples = 0;
+            }
+            for (int i = 0; i < NUM_MOTORS; ++i)
+            {
+                leftMotors[i].set(1.0);
+                rightMotors[i].set(1.0);
+            }
+
+            // Wait one second before starting to sample
+            if (Timer.getFPGATimestamp() > (timeOfSampleStart_sec + 1.0))
+            {
+                for (int i = 0; i < NUM_MOTORS; ++i)
+                {
+                    leftVelocitySamples_ticksP100ms[i][velSampleIndex] = leftMotors[i].getSelectedSensorVelocity(0);
+                    rightVelocitySamples_ticksP100ms[i][velSampleIndex] = rightMotors[i].getSelectedSensorVelocity(0);
+                    if (numVelSamples < NUM_VELOCITY_SAMPLES)
+                    {
+                        ++numVelSamples;
+                    }
+                }
+                // Just override the last sample if we have enough samples
+                if (velSampleIndex < NUM_VELOCITY_SAMPLES-1)
+                {
+                    velSampleIndex += 1;
+                }
+                else
+                {
+                    velSampleIndex = 0;
+                }
+            }
+        }
+        else
+        {
+            timeOfSampleStart_sec = 0.0;
+            if (numVelSamples >= 100)
+            {
+                // We have enough samples to make an estimate
+                SmartDashboard.putNumber("velocitySamples", numVelSamples);
+                for (int i = 0; i < NUM_MOTORS; ++i)
+                {
+                    String stri = Integer.toString(i);
+
+                    // Add the data from the left array
+                    descriptiveStatistics.clear();
+                    for( int j = 0; j < numVelSamples; ++j) 
+                    {
+                        descriptiveStatistics.addValue(leftVelocitySamples_ticksP100ms[0][i]);
+                    }
+
+                    // Compute some statistics
+                    SmartDashboard.putNumber("leftMeanVelocity_tickP100ms_"+stri, descriptiveStatistics.getMean());
+                    SmartDashboard.putNumber("leftStdVelocity_tickP100ms_"+stri, descriptiveStatistics.getStandardDeviation());
+                    SmartDashboard.putNumber("leftMedianVelocity_tickP100ms_"+stri, descriptiveStatistics.getPercentile(50));
+
+                    // Add the data from the left array
+                    descriptiveStatistics.clear();
+                    for( int j = 0; j < numVelSamples; ++j) 
+                    {
+                        descriptiveStatistics.addValue(rightVelocitySamples_ticksP100ms[0][i]);
+                    }
+
+                    // Compute some statistics
+                    SmartDashboard.putNumber("rightMeanVelocity_tickP100ms_"+stri, descriptiveStatistics.getMean());
+                    SmartDashboard.putNumber("rightStdVelocity_tickP100ms_"+stri, descriptiveStatistics.getStandardDeviation());
+                    SmartDashboard.putNumber("rightMedianVelocity_tickP100ms_"+stri, descriptiveStatistics.getPercentile(50));
+                }
+                numVelSamples = 0;                        
+            }
+            enableFollowMode();
+            drive.stopMotor();
+        }        
     }
 
     private void telemetry()

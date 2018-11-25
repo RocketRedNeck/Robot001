@@ -31,10 +31,22 @@ deploy {
     }
 }
 
+// TODO: Need to work on a cleaner way to share these applied dependencies
+// The main issue is that the versions may be prototype, alpha, or beta we
+// may not want and there is little visibility into which one is being used
+// at any point; example would be the WPI library where the SmartDashboard
+// functions have deprecations that if you switch to the new functions then
+// the removing the 'apply' causes the build to fail when the older library
+// is referenced.
+//
+// We can keep and deploy as such (with this 'apply' statement) if the issue
+// with main has been resolved.
 apply from: 'https://raw.githubusercontent.com/cpostbitbuckets/FRCTutorial/master/buildSrc/simulator.gradle'
 
 // Defining my dependencies. In this case, WPILib (+ friends), CTRE Toolsuite (Talon SRX)
 // and NavX.
+// TODO: It would be nice to contain all of the relevant application statements (above)
+// here in this one space
 dependencies {
     compile wpilib()
     compile ctre()
