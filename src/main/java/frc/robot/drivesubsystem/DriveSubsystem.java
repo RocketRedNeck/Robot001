@@ -418,6 +418,7 @@ public class DriveSubsystem extends Subsystem {
             {
                 if (OI.testButton())
                 {
+                    System.out.println("Open Loop Sample...");
                     // Set all motors to full speed
                     // Keep sampling until user stops pressing button
                     if (timeOfSampleStart_sec == 0.0)
@@ -427,6 +428,7 @@ public class DriveSubsystem extends Subsystem {
                         timeOfSampleStart_sec = Timer.getFPGATimestamp();
                         velSampleIndex = 0;
                         numVelSamples = 0;
+                        System.out.println("Open Loop Sample Triggered...");
                     }
                     for (int i = 0; i < NUM_MOTORS; ++i)
                     {
@@ -441,15 +443,19 @@ public class DriveSubsystem extends Subsystem {
                         {
                             leftVelocitySamples_ticksP100ms[i][velSampleIndex] = leftMotors[i].getSelectedSensorVelocity(0);
                             rightVelocitySamples_ticksP100ms[i][velSampleIndex] = rightMotors[i].getSelectedSensorVelocity(0);
-                            if (numVelSamples <= NUM_VELOCITY_SAMPLES)
+                            if (numVelSamples < NUM_VELOCITY_SAMPLES)
                             {
                                 ++numVelSamples;
                             }
                         }
                         // Just override the last sample if we have enough samples
-                        if (velSampleIndex <= NUM_VELOCITY_SAMPLES-1)
+                        if (velSampleIndex < NUM_VELOCITY_SAMPLES-1)
                         {
                             velSampleIndex += 1;
+                        }
+                        else
+                        {
+                            velSampleIndex = 0;
                         }
                     }
 
@@ -461,7 +467,7 @@ public class DriveSubsystem extends Subsystem {
                     if (numVelSamples >= 100)
                     {
                         // We have enough samples to make an estimate
-
+                        SmartDashboard.putNumber("velocitySamples", numVelSamples);
                         for (int i = 0; i < NUM_MOTORS; ++i)
                         {
                             String stri = Integer.toString(i);
@@ -490,16 +496,11 @@ public class DriveSubsystem extends Subsystem {
                             SmartDashboard.putNumber("rightStdVelocity_tickP100ms_"+stri, descriptiveStatistics.getStandardDeviation());
                             SmartDashboard.putNumber("rightMedianVelocity_tickP100ms_"+stri, descriptiveStatistics.getPercentile(50));
 
-                        }                        
+                        }
+                        numVelSamples = 0;                        
                     }
                     enableFollowMode();
-                    for (int i = 1; i < NUM_MOTORS; ++i)
-                    {
-                        leftMotors[i].follow(leftMotors[0]);
-                        rightMotors[i].follow(rightMotors[0]);
-                    }                    
-                    leftMotors[0].set(speed);
-                    rightMotors[0].set(speed);
+                    drive.stopMotor();
                 }
                 break;
             }
